@@ -21,11 +21,16 @@ app.add_middleware(
 # 1. Auth Router Include
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 
-# --- CONFIG ---
 import os
-URI = os.getenv("URI")
-USER = os.getenv("USER")
-PASSWORD = os.getenv("PASSWORD") 
+
+# Naye, clean variables load karo
+URI = os.getenv("NEO4J_URI")
+USER = os.getenv("NEO4J_USERNAME")
+PASSWORD = os.getenv("NEO4J_PASSWORD")
+
+# Check karo ki sahi load hua ya nahi
+if not URI:
+    print("ERROR: URI not found in environment variables!")
 
 # 2. Graph Data Endpoint
 @app.get("/api/v1/graph", tags=["graph"])
