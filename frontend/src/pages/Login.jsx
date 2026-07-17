@@ -34,7 +34,7 @@ const Login = () => {
       
       // 3. Redirect to dashboard
       // Laga do
- window.location.href = '/';
+navigate('/');
       
     } catch (err) {
       // 4. Robust Error Handling
