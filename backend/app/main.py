@@ -19,9 +19,9 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 
 # --- CONFIG ---
-URI = "bolt://localhost:7687"
-USER = "neo4j"
-PASSWORD = "neo4j@1234" 
+URI = "neo4j+s://921df89f.databases.neo4j.io"
+USER = "921df89f"
+PASSWORD = "kYYk5APhq9yhGUDiCPMM3GsL1tWclGoginny2EYZjeM" 
 
 # 2. Graph Data Endpoint
 @app.get("/api/v1/graph", tags=["graph"])
