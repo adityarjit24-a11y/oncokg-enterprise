@@ -13,12 +13,13 @@ const SimulationLab = () => {
   const [drugs, setDrugs] = useState([]);
   const [genes, setGenes] = useState([]);
 
-  useEffect(() => {
+ useEffect(() => {
     const loadData = async () => {
       try {
+        // FIX: '/api/v1/' hata diya
         const [drugsRes, genesRes] = await Promise.all([
-          api.get('/api/v1/explore/drugs?limit=100'),
-          api.get('/api/v1/explore/genes?limit=100')
+          api.get('/explore/drugs?limit=100'),
+          api.get('/explore/genes?limit=100')
         ]);
         setDrugs(drugsRes.data || []);
         setGenes(genesRes.data || []);
@@ -33,7 +34,8 @@ const SimulationLab = () => {
     setLoading(true);
     setResult(null);
     try {
-      const response = await api.post('/api/v1/simulation/run', values);
+      // FIX: '/api/v1/' hata diya
+      const response = await api.post('/simulation/run', values);
       setResult(response.data);
     } catch (error) {
       console.error("Simulation run failed:", error);
