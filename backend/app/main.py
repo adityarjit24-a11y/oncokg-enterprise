@@ -29,6 +29,7 @@ app.add_middleware(
 # 1. Auth Router Include (Ye sabse important hai /login chalane ke liye)
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 
+
 # Neo4j Graph Database Credentials Load karo
 URI = os.getenv("NEO4J_URI")
 USER = os.getenv("NEO4J_USERNAME")
