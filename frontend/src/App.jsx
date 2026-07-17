@@ -75,3 +75,31 @@ const App = () => {
 };
 
 export default App;
+
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Login from './pages/Login'; 
+import Dashboard from './components/Dashboard'; // Apne actual imports check kar lena
+import GraphWorkspace from './components/GraphWorkspace';
+import SharedExplorer from './components/SharedExplorer';
+import ProtectedRoute from './components/ProtectedRoute'; // <-- Ye line add karo
+
+function App() {
+  return (
+    <Router>
+      <Routes>
+        {/* PUBLIC ROUTE - Koi bhi access kar sakta hai */}
+        <Route path="/login" element={<Login />} />
+
+        {/* SECURE ROUTES - Sirf logged in user access kar payega */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/graph" element={<GraphWorkspace />} />
+          {/* Apne baaki saare private routes yahan rakhne hain... */}
+        </Route>
+      </Routes>
+    </Router>
+  );
+}
+
+export default App;
