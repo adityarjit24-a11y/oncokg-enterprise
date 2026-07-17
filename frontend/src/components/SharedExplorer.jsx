@@ -16,11 +16,13 @@ const SharedExplorer = ({ title, subtitle, endpoint, columns, detailLayout }) =>
   const fetchData = useCallback(async (search = '') => {
     setLoading(true);
     try {
-      // 1. URL mein '/explore/' add kiya aur custom api object use kiya
-      const response = await api.get(`/api/v1/explore/${endpoint}?limit=50&search=${search}`);
+      // FIX: URL se '/api/v1' hata diya kyunki baseURL mein wo already hai.
+      // Sahi URL banega: .../api/v1/explore/drugs
+      const response = await api.get(`/explore/${endpoint}?limit=50&search=${search}`);
       setData(response.data);
     } catch (error) {
       console.error(`Failed to fetch ${endpoint}:`, error);
+      // Optional: messageApi.error("Failed to fetch data");
     } finally {
       setLoading(false);
     }
