@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  neo4j:
+    image: neo4j:5.12
+    container_name: oncokg_neo4j
+    restart: always
+    environment:
+      - NEO4J_AUTH=neo4j/neo4j@1234
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j_data:/data
+
+  backend:
+    build: ./backend
+    container_name: oncokg_backend
+    restart: always
+    ports:
+      - "8000:8000"
+    depends_on:
+      - neo4j
+
+  frontend:
+    build: ./frontend
+    container_name: oncokg_frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  neo4j_data:
