@@ -1,35 +1,41 @@
+import os
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from neo4j import GraphDatabase
-# Import your auth router
-from app.routers import auth 
-
 from fastapi.responses import RedirectResponse
+from neo4j import GraphDatabase
 
+# Auth router import (Ensure karna ki path tumhare folder jaisa hi ho)
+# Agar pichli baar 'api.endpoints import auth' chal raha tha toh wahi rakhna
+from api.endpoints import auth 
 
+# Sirf ek baar app initialize hoga
 app = FastAPI(title="OncoKG Enterprise API")
 
-# CORS setup - Enterprise grade
+# STRICT CORS POLICY (Production-ready lockdown)
+origins = [
+    "https://oncokg-enterprise.vercel.app", # YEH TUMHARA PRODUCTION FRONTEND HAI
+    "http://localhost:3000",                # Agar local dev React use karte ho
+    "http://localhost:5173"                 # Agar local dev Vite use karte ho
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=origins,
+    allow_credentials=True, # Ye True hona chahiye cookies/tokens ke liye
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"], # Sirf allowed methods
+    allow_headers=["*"], 
 )
 
-# 1. Auth Router Include
+# 1. Auth Router Include (Ye sabse important hai /login chalane ke liye)
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
-import os
 
-# Naye, clean variables load karo
+# Neo4j Graph Database Credentials Load karo
 URI = os.getenv("NEO4J_URI")
 USER = os.getenv("NEO4J_USERNAME")
 PASSWORD = os.getenv("NEO4J_PASSWORD")
 
-# Check karo ki sahi load hua ya nahi
 if not URI:
-    print("ERROR: URI not found in environment variables!")
+    print("WARNING: NEO4J_URI not found in environment variables!")
 
 # 2. Graph Data Endpoint
 @app.get("/api/v1/graph", tags=["graph"])
@@ -51,10 +57,9 @@ def get_graph_data():
     except Exception as e:
         return {"error": str(e)}
 
-# 3. Dynamic Explorer (Isse priority upar rakhi hai)
+# 3. Dynamic Explorer 
 @app.get("/api/v1/explore/{entity_type}", tags=["explorer"])
 def get_explorer_data(entity_type: str, limit: int = 50, search: str = ""):
-    # ✅ FIX: "publications" yahan add kar diya gaya hai
     mapping = {
         "drugs": "Drug", 
         "genes": "Gene", 
@@ -70,8 +75,6 @@ def get_explorer_data(entity_type: str, limit: int = 50, search: str = ""):
     try:
         driver = GraphDatabase.driver(URI, auth=(USER, PASSWORD))
         with driver.session() as session:
-            # Note: Publications might use a different name field (like 'title' instead of 'name')
-            # I updated the query to check for both 'name' and 'title' so search works perfectly.
             query = f"""
             MATCH (n:{label}) 
             WHERE toLower(n.name) CONTAINS toLower($search) 
@@ -97,31 +100,8 @@ async def run_simulation(request: Request):
 async def ai_chat(request: Request):
     return {"reply": "System operational!"}
 
-# Yeh naya route add karo taaki purani requests sahi jagah pahunche
+# 6. Legacy Graph Redirect
 @app.get("/graph")
 async def legacy_graph_redirect():
     # Frontend agar /graph maange, toh use seedha /api/v1/graph par bhej do
     return RedirectResponse(url="/api/v1/graph")
-
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-
-app = FastAPI(title="OncoKG Enterprise API")
-
-# STRICT CORS POLICY (Production mein '*' bilkul allow mat karna)
-# Yahan sirf apna exact Vercel URL likho (last mein '/' nahi aana chahiye)
-origins = [
-    "https://oncokg-enterprise.vercel.app", # YEH TUMHARA PRODUCTION FRONTEND HAI
-    "http://localhost:3000",                # Agar local dev React use karte ho
-    "http://localhost:5173"                 # Agar local dev Vite use karte ho
-]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True, # Ye True hona chahiye cookies/tokens ke liye
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"], # Sirf allowed methods
-    allow_headers=["*"], 
-)
-
-# ... baaki tumhara backend code ...
