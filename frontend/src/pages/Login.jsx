@@ -3,7 +3,7 @@ import { Form, Input, Button, Card, Typography, Select, Alert, theme, message } 
 import { UserOutlined, LockOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import api from '../api/axios'; // Ensure this points to your configured Axios instance
+import api from '../api/axios'; // Humara configured Axios instance
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -19,13 +19,14 @@ const Login = () => {
     setLoading(true);
     setError('');
     
-   try {
-  // Agar tumne backend mein prefix use kiya hai, toh pura path likho
-  const response = await api.post('/api/v1/auth/login', { 
-    email: values.email, 
-    password: values.password,
-    role: values.role
-  });
+    try {
+      // FIX: URL se '/api/v1' hata diya kyunki baseURL mein wo already include hai.
+      // Sahi URL banega: https://oncokg-enterprise-production.up.railway.app/api/v1/auth/login
+      const response = await api.post('/auth/login', { 
+        email: values.email, 
+        password: values.password,
+        role: values.role
+      });
       
       // 2. Notify user and update AuthContext
       message.success(`Welcome back, ${response.data.user.name}`);
