@@ -3,7 +3,7 @@ import axios from 'axios';
 
 // Create a central instance
 const api = axios.create({
-    baseURL: 'http://localhost:8000',
+    baseURL: 'https://oncokg-enterprise-production.up.railway.app',
     withCredentials: true // CRITICAL: Allows Axios to send httpOnly cookies
 });
 
