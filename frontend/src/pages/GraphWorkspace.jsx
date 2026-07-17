@@ -8,7 +8,7 @@ import {
   NodeIndexOutlined, AimOutlined, FilterOutlined 
 } from '@ant-design/icons';
 import ForceGraph2D from 'react-force-graph-2d';
-import axios from 'axios';
+import api from '../api/axios'; // Ensure path sahi ho (agar components folder mein ho toh ../api/axios)
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -106,7 +106,7 @@ const GraphWorkspace = () => {
     const fetchGraph = async () => {
       try {
         setLoading(true);
-        const res = await axios.get('https://oncokg-enterprise-production.up.railway.app');
+        const res = await api.get('/graph');
         if (res.data.nodes.length === 0) throw new Error("Empty DB");
         setGraphData(res.data);
       } catch (error) {
