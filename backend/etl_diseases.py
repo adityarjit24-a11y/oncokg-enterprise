@@ -3,16 +3,16 @@ from neo4j import GraphDatabase
 import math
 
 # Connection credentials - APNA PASSWORD YAHAN UPDATE KAREIN!
-URI = "bolt://localhost:7687"
-USER = "neo4j"
-PASSWORD = "neo4j@1234"  # <-- Apna Neo4j password yahan likho
+URI = "neo4j+ssc://921df89f.databases.neo4j.io"
+USER = "921df89f"
+PASSWORD = "kYYk5APhq9yhGUDiCPMM3GsL1tWclGoginny2EYZjeM"  # <-- Apna Neo4j password yahan likho
 
 def load_diseases_and_connections():
     print("Extracting Real Diseases & Phenotypes from existing dataset...")
     
     try:
         # Hum wahi purani file use kar rahe hain!
-        df = pd.read_csv('data/relationship.tsv', sep='\t', dtype=str, on_bad_lines='skip')
+        df = pd.read_csv('data/relationships.tsv', sep='\t', dtype=str, on_bad_lines='skip')
         
         # 1. Extract Disease Nodes (PharmGKB uses 'Disease' or 'Phenotype')
         dis1 = df[df['Entity1_type'].isin(['Disease', 'Phenotype'])][['Entity1_id', 'Entity1_name']].rename(columns={'Entity1_id': 'id', 'Entity1_name': 'name'})

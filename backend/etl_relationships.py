@@ -3,15 +3,15 @@ from neo4j import GraphDatabase
 import math
 
 # Connection credentials - APNA PASSWORD YAHAN UPDATE KAREIN!
-URI = "bolt://localhost:7687"
-USER = "neo4j"
-PASSWORD = "neo4j@1234"  # <-- Update this to your Neo4j password
+URI = "neo4j+ssc://921df89f.databases.neo4j.io"
+USER = "921df89f"
+PASSWORD = "kYYk5APhq9yhGUDiCPMM3GsL1tWclGoginny2EYZjeM" 
 
 def load_relationships_to_neo4j():
     print("Loading ClinPGx Relationships to connect Drugs and Genes...")
     
     try:
-        df = pd.read_csv('data/relationship.tsv', sep='\t', dtype=str, on_bad_lines='skip')
+        df = pd.read_csv('data/relationships.tsv', sep='\t', dtype=str, on_bad_lines='skip')
         
         # Hum un rows ko filter kar rahe hain jahan ek side 'Chemical' (Drug) ho aur doosri side 'Gene' ho
         # Case 1: Entity1 is Chemical, Entity2 is Gene

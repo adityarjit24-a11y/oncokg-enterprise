@@ -3,15 +3,15 @@ from neo4j import GraphDatabase
 import math
 
 # Connection credentials - APNA PASSWORD YAHAN UPDATE KARNA MAT BHOOLNA!
-URI = "bolt://localhost:7687"
-USER = "neo4j"
-PASSWORD = "neo4j@1234"  # <-- Apna Neo4j password yahan likho
+URI = "neo4j+ssc://921df89f.databases.neo4j.io"
+USER = "921df89f"
+PASSWORD = "kYYk5APhq9yhGUDiCPMM3GsL1tWclGoginny2EYZjeM" 
 
 def load_drugs_to_neo4j():
     print("Loading ClinPGx Relationships dataset into Pandas...")
     
     try:
-        df = pd.read_csv('data/relationship.tsv', sep='\t', dtype=str, on_bad_lines='skip')
+        df = pd.read_csv('data/relationships.tsv', sep='\t', dtype=str, on_bad_lines='skip')
         
         # THE FIX: PharmGKB categorizes medicines as 'Chemical', not 'Drug'
         drugs_side_1 = df[df['Entity1_type'] == 'Chemical'][['Entity1_id', 'Entity1_name']].rename(columns={'Entity1_id': 'id', 'Entity1_name': 'name'})

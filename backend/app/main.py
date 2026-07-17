@@ -4,6 +4,9 @@ from neo4j import GraphDatabase
 # Import your auth router
 from app.routers import auth 
 
+from fastapi.responses import RedirectResponse
+
+
 app = FastAPI(title="OncoKG Enterprise API")
 
 # CORS setup - Enterprise grade
@@ -19,9 +22,10 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 
 # --- CONFIG ---
-URI = "neo4j+s://921df89f.databases.neo4j.io"
-USER = "921df89f"
-PASSWORD = "kYYk5APhq9yhGUDiCPMM3GsL1tWclGoginny2EYZjeM" 
+import os
+URI = os.getenv("URI")
+USER = os.getenv("USER")
+PASSWORD = os.getenv("PASSWORD") 
 
 # 2. Graph Data Endpoint
 @app.get("/api/v1/graph", tags=["graph"])
@@ -88,3 +92,9 @@ async def run_simulation(request: Request):
 @app.post("/api/v1/ai/chat", tags=["ai"])
 async def ai_chat(request: Request):
     return {"reply": "System operational!"}
+
+# Yeh naya route add karo taaki purani requests sahi jagah pahunche
+@app.get("/graph")
+async def legacy_graph_redirect():
+    # Frontend agar /graph maange, toh use seedha /api/v1/graph par bhej do
+    return RedirectResponse(url="/api/v1/graph")

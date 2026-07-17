@@ -2,9 +2,9 @@ import requests
 from neo4j import GraphDatabase
 
 # Connection credentials - APNA PASSWORD YAHAN UPDATE KAREIN!
-URI = "bolt://localhost:7687"
-USER = "neo4j"
-PASSWORD = "neo4j@1234"  # <-- Apna Neo4j password yahan likho
+URI = "neo4j+ssc://921df89f.databases.neo4j.io"
+USER = "921df89f"
+PASSWORD = "kYYk5APhq9yhGUDiCPMM3GsL1tWclGoginny2EYZjeM" 
 
 def fetch_publications():
     print("Fetching Live Research Papers from PubMed (NCBI)...")
