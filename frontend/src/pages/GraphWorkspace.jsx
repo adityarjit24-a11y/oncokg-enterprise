@@ -106,7 +106,7 @@ const GraphWorkspace = () => {
     const fetchGraph = async () => {
       try {
         setLoading(true);
-        const res = await axios.get('http://localhost:8000/api/v1/graph/?limit=200');
+        const res = await axios.get('https://oncokg-enterprise-production.up.railway.app');
         if (res.data.nodes.length === 0) throw new Error("Empty DB");
         setGraphData(res.data);
       } catch (error) {

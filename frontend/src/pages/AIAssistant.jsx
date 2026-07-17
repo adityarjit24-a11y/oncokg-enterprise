@@ -24,7 +24,7 @@ const AIAssistant = () => {
     setLoading(true);
 
     try {
-      const res = await axios.post('http://localhost:8000/api/v1/ai/chat', { message: text });
+      const res = await axios.post('https://oncokg-enterprise-production.up.railway.app', { message: text });
       setMessages(prev => [...prev, { sender: 'ai', text: res.data.reply }]);
     } catch (error) {
       setMessages(prev => [...prev, { sender: 'ai', text: 'Error connecting to AI service.' }]);
