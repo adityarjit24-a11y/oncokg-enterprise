@@ -1,116 +1,172 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Card, Table, Input, Space, Button, Drawer, Typography, Descriptions, Tooltip } from 'antd';
-import { SearchOutlined, DownloadOutlined, NodeIndexOutlined, ExportOutlined } from '@ant-design/icons';
-import api from '../api/axios'; // Direct axios hata kar secure api import kiya
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Card, Table, Input, Space, Tag, Typography, Tooltip, Button } from 'antd';
+import { SearchOutlined, ReloadOutlined } from '@ant-design/icons';
+import api from '../api/axios';
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
-const SharedExplorer = ({ title, subtitle, endpoint, columns, detailLayout }) => {
+const SharedExplorer = () => {
   const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedEntity, setSelectedEntity] = useState(null);
-  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [searchText, setSearchText] = useState('');
+  
+  // Enterprise Pagination State
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
 
-  const fetchData = useCallback(async (search = '') => {
+  // Reference for Debounce Timeout
+  const debounceTimeout = useRef(null);
+  // Reference for AbortController to kill previous requests
+  const abortController = useRef(null);
+
+  // Main Fetch Function
+  const fetchData = useCallback(async (page = 1, limit = 10, search = '') => {
+    // Kill any ongoing request before starting a new one
+    if (abortController.current) {
+      abortController.current.abort();
+    }
+    abortController.current = new AbortController();
+
     setLoading(true);
     try {
-      // FIX: URL se '/api/v1' hata diya kyunki baseURL mein wo already hai.
-      // Sahi URL banega: .../api/v1/explore/drugs
-      const response = await api.get(`/explore/${endpoint}?limit=50&search=${search}`);
-      setData(response.data);
+      // Backend ko proper query params bhejna (Ensure your backend supports these)
+      const response = await api.get('/explorer/data', {
+        params: { page, limit, search },
+        signal: abortController.current.signal
+      });
+
+      // Agar backend pagination format bhejta hai: { data: [...], total: 100 }
+      // Agar backend direct array bhejta hai, toh total uski length hogi (fallback)
+      const fetchedData = response.data.items || response.data || [];
+      const totalCount = response.data.total || fetchedData.length;
+
+      setData(fetchedData);
+      setPagination(prev => ({ ...prev, current: page, pageSize: limit, total: totalCount }));
     } catch (error) {
-      console.error(`Failed to fetch ${endpoint}:`, error);
-      // Optional: messageApi.error("Failed to fetch data");
+      if (error.name === 'CanceledError' || error.code === 'ERR_CANCELED') {
+        console.log('Previous fetch cancelled');
+      } else {
+        console.error('Failed to fetch data', error);
+        setData([]); // Clear data on error to prevent broken UI
+      }
     } finally {
       setLoading(false);
     }
-  }, [endpoint]);
+  }, []);
 
+  // Initial Load
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    fetchData(pagination.current, pagination.pageSize, searchText);
+    return () => {
+      if (abortController.current) abortController.current.abort();
+    };
+  }, []); // Only run once on mount
 
-  const handleSearch = (value) => {
-    setSearchQuery(value);
-    fetchData(value);
+  // Debounced Search Handler
+  const handleSearch = (e) => {
+    const value = e.target.value;
+    setSearchText(value);
+
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
+    }
+
+    debounceTimeout.current = setTimeout(() => {
+      // Jab typing ruk jaye (500ms), tabhi page 1 se search start karo
+      fetchData(1, pagination.pageSize, value);
+    }, 500); 
   };
 
-  const exportCSV = () => {
-    if (data.length === 0) return;
-    const headers = Object.keys(data[0]).join(',');
-    const rows = data.map(obj => Object.values(obj).join(',')).join('\n');
-    const blob = new Blob([`${headers}\n${rows}`], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.setAttribute('href', url);
-    a.setAttribute('download', `${endpoint}_export.csv`);
-    a.click();
+  // Pagination Change Handler (Ant Design automatically gives new page and pageSize)
+  const handleTableChange = (newPagination) => {
+    fetchData(newPagination.current, newPagination.pageSize, searchText);
   };
+
+  // Enterprise Table Columns
+  const columns = [
+    {
+      title: 'Entity ID',
+      dataIndex: 'id',
+      key: 'id',
+      render: (text) => <Typography.Text copyable code>{text || 'N/A'}</Typography.Text>,
+    },
+    {
+      title: 'Name',
+      dataIndex: 'name',
+      key: 'name',
+      render: (text) => <strong>{text || 'Unknown'}</strong>,
+    },
+    {
+      title: 'Type',
+      dataIndex: 'type',
+      key: 'type',
+      render: (type) => {
+        let color = 'default';
+        if (type === 'Drug' || type === 'Chemical') color = 'green';
+        if (type === 'Gene') color = 'blue';
+        if (type === 'Disease' || type === 'Phenotype') color = 'red';
+        return <Tag color={color}>{type || 'Unknown'}</Tag>;
+      }
+    },
+    {
+      title: 'Description',
+      dataIndex: 'desc',
+      key: 'desc',
+      ellipsis: {
+        showTitle: false,
+      },
+      render: (desc) => (
+        <Tooltip placement="topLeft" title={desc}>
+          {desc || 'No description available'}
+        </Tooltip>
+      ),
+    }
+  ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <Title level={3} style={{ margin: 0 }}>{title}</Title>
-          <Text type="secondary">{subtitle}</Text>
-        </div>
-        <Space>
-          <Input.Search 
-            placeholder={`Search ${title.toLowerCase()}...`} 
-            allowClear 
-            onSearch={handleSearch} 
-            style={{ width: 300 }} 
-          />
-          <Button icon={<DownloadOutlined />} onClick={exportCSV}>Export Data</Button>
-        </Space>
-      </div>
-
-      <Card bordered={false} bodyStyle={{ padding: 0 }} style={{ overflow: 'hidden', borderRadius: 8 }}>
-        <Table 
-          columns={columns} 
-          dataSource={data} 
-          rowKey="id"
-          loading={loading}
-          pagination={{ pageSize: 15, showSizeChanger: true }}
-          onRow={(record) => ({
-            onClick: () => setSelectedEntity(record),
-            style: { cursor: 'pointer' }
-          })}
-          rowClassName={() => 'enterprise-table-row'}
-        />
-      </Card>
-
-      <Drawer
-        title={<span style={{ fontWeight: 600 }}>{selectedEntity?.name || selectedEntity?.title} Details</span>}
-        placement="right"
-        width={500}
-        onClose={() => setSelectedEntity(null)}
-        open={!!selectedEntity}
+    <div style={{ padding: '24px', minHeight: '100vh' }}>
+      <Card 
+        title={<Title level={4} style={{ margin: 0, color: '#fff' }}>Knowledge Graph Explorer</Title>}
         extra={
           <Space>
-            <Tooltip title="View in Graph">
-              <Button type="primary" icon={<NodeIndexOutlined />} onClick={() => navigate('/graph')} />
-            </Tooltip>
-            <Tooltip title="Export JSON">
-              <Button icon={<ExportOutlined />} />
-            </Tooltip>
+            <Input
+              placeholder="Search entities..."
+              prefix={<SearchOutlined />}
+              value={searchText}
+              onChange={handleSearch}
+              style={{ width: 300 }}
+              allowClear
+            />
+            <Button 
+              icon={<ReloadOutlined />} 
+              onClick={() => fetchData(pagination.current, pagination.pageSize, searchText)}
+              disabled={loading}
+            >
+              Refresh
+            </Button>
           </Space>
         }
+        style={{ background: '#141414', borderColor: '#333' }}
+        headStyle={{ borderBottom: '1px solid #333' }}
       >
-        {selectedEntity && (
-          /* 3. Ant Design v5 warning fix for Descriptions component */
-          <Descriptions 
-            column={1} 
-            bordered 
-            size="small" 
-            styles={{ label: { width: '150px', background: 'rgba(0,0,0,0.02)' } }}
-          >
-            {detailLayout(selectedEntity)}
-          </Descriptions>
-        )}
-      </Drawer>
+        <Table
+          columns={columns}
+          dataSource={data}
+          rowKey={(record) => record.id || Math.random().toString()}
+          loading={loading}
+          pagination={{
+            ...pagination,
+            showSizeChanger: true,
+            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
+          }}
+          onChange={handleTableChange}
+          scroll={{ x: 'max-content', y: 'calc(100vh - 350px)' }} // Enterprise scrolling
+          size="middle"
+        />
+      </Card>
     </div>
   );
 };
