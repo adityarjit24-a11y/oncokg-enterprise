@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { 
   Card, Input, Select, Space, Button, Switch, Drawer, 
-  Descriptions, Tag, Tooltip, message, Row, Col, Typography, Statistic 
+  Descriptions, Tag, Tooltip, message, Row, Col, Typography, Statistic, Spin, Empty 
 } from 'antd';
 import { 
   SearchOutlined, DownloadOutlined, ExportOutlined, 
-  NodeIndexOutlined, AimOutlined, FilterOutlined 
+  NodeIndexOutlined, AimOutlined, FilterOutlined, DatabaseOutlined, WarningOutlined 
 } from '@ant-design/icons';
 import ForceGraph2D from 'react-force-graph-2d';
-import api from '../api/axios'; // Ensure path sahi ho (agar components folder mein ho toh ../api/axios)
+import api from '../api/axios'; 
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -34,26 +34,9 @@ const EDGE_COLORS = {
   DEFAULT: 'rgba(200, 200, 200, 0.4)'
 };
 
-// Fallback Mock Data for UI testing without populated DB
-const mockData = {
-  nodes: [
-    { id: '1', name: 'EGFR', type: 'Gene', desc: 'Epidermal growth factor receptor' },
-    { id: '2', name: 'Erlotinib', type: 'Drug', desc: 'Tyrosine kinase inhibitor' },
-    { id: '3', name: 'NSCLC', type: 'Disease', desc: 'Non-Small Cell Lung Cancer' },
-    { id: '4', name: 'T790M', type: 'Mutation', desc: 'Gatekeeper resistance mutation' },
-  ],
-  links: [
-    { source: '2', target: '1', type: 'TARGETS' },
-    { source: '1', target: '3', type: 'ASSOCIATED_WITH' },
-    { source: '4', target: '1', type: 'VARIANT_OF' },
-    { source: '4', target: '2', type: 'CONFERS_RESISTANCE_TO' },
-  ]
-};
-
-// SMART HELPER FUNCTIONS (To resolve Neo4j label vs UI name conflicts)
+// SMART HELPER FUNCTIONS
 const getNodeType = (node) => {
   const rawType = node.label || node.type || 'Unknown';
-  // Standardize PharmGKB labels to UI labels
   if (rawType === 'Chemical') return 'Drug';
   if (rawType === 'Phenotype') return 'Disease';
   if (rawType === 'Variant') return 'Mutation';
@@ -78,6 +61,7 @@ const GraphWorkspace = () => {
   const [graphData, setGraphData] = useState({ nodes: [], links: [] });
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(null); // Added Error State
   
   // UI State
   const [selectedNode, setSelectedNode] = useState(null);
@@ -101,22 +85,39 @@ const GraphWorkspace = () => {
     return () => observer.disconnect();
   }, []);
 
-  // Fetch Data
+  // Fetch Data (With AbortController to prevent Race Conditions/Memory Leaks)
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchGraph = async () => {
       try {
         setLoading(true);
-        const res = await api.get('/graph');
-        if (res.data.nodes.length === 0) throw new Error("Empty DB");
-        setGraphData(res.data);
+        setFetchError(null);
+        // Using signal to allow cancellation
+        const res = await api.get('/graph', { signal: controller.signal });
+        
+        if (!res.data || !res.data.nodes || res.data.nodes.length === 0) {
+          setGraphData({ nodes: [], links: [] }); // Set empty to trigger empty state
+        } else {
+          setGraphData(res.data);
+        }
       } catch (error) {
-        console.warn("Neo4j fetch failed or empty, using local fallback data.");
-        setGraphData(mockData);
+        if (error.name === 'CanceledError' || error.code === 'ERR_CANCELED') {
+          console.log('Previous graph request cancelled');
+        } else {
+          console.error("Neo4j fetch failed:", error);
+          setFetchError(error.response?.data?.message || "Failed to fetch knowledge graph data from Neo4j.");
+          setGraphData({ nodes: [], links: [] });
+        }
       } finally {
         setLoading(false);
       }
     };
+    
     fetchGraph();
+
+    // Cleanup function to abort request on unmount
+    return () => controller.abort();
   }, []);
 
   // Filter Logic (Memoized)
@@ -171,8 +172,6 @@ const GraphWorkspace = () => {
   // Graph Interactions
   const handleNodeClick = useCallback((node) => {
     setSelectedNode(node);
-    const distance = 40;
-    const distRatio = 1 + distance / Math.hypot(node.x, node.y, node.z || 0);
     graphRef.current?.centerAt(node.x, node.y, 1000);
     graphRef.current?.zoom(4, 1000);
   }, []);
@@ -215,6 +214,7 @@ const GraphWorkspace = () => {
             onChange={e => setSearchQuery(e.target.value)}
             style={{ width: 250 }}
             allowClear
+            disabled={loading || !!fetchError}
           />
           <Select
             mode="multiple"
@@ -223,6 +223,7 @@ const GraphWorkspace = () => {
             onChange={setNodeTypeFilters}
             maxTagCount="responsive"
             allowClear
+            disabled={loading || !!fetchError}
           >
             {Object.keys(NODE_COLORS).filter(k => k !== 'Unknown').map(k => (
               <Option key={k} value={k}>{k}</Option>
@@ -235,6 +236,7 @@ const GraphWorkspace = () => {
             onChange={setEdgeTypeFilters}
             maxTagCount="responsive"
             allowClear
+            disabled={loading || !!fetchError}
           >
             {Object.keys(EDGE_COLORS).filter(k => k !== 'DEFAULT').map(k => (
               <Option key={k} value={k}>{k}</Option>
@@ -244,11 +246,11 @@ const GraphWorkspace = () => {
         
         <Space>
           <Tooltip title="Toggle Physics">
-            <Switch checked={physicsEnabled} onChange={setPhysicsEnabled} checkedChildren="Dynamics On" unCheckedChildren="Dynamics Off" />
+            <Switch checked={physicsEnabled} onChange={setPhysicsEnabled} checkedChildren="Dynamics On" unCheckedChildren="Dynamics Off" disabled={loading || !!fetchError || graphData.nodes.length === 0} />
           </Tooltip>
-          <Button icon={<AimOutlined />} onClick={focusGraph}>Fit View</Button>
-          <Button icon={<DownloadOutlined />} onClick={exportPNG}>PNG</Button>
-          <Button icon={<ExportOutlined />} onClick={exportJSON}>JSON</Button>
+          <Button icon={<AimOutlined />} onClick={focusGraph} disabled={loading || !!fetchError || graphData.nodes.length === 0}>Fit View</Button>
+          <Button icon={<DownloadOutlined />} onClick={exportPNG} disabled={loading || !!fetchError || graphData.nodes.length === 0}>PNG</Button>
+          <Button icon={<ExportOutlined />} onClick={exportJSON} disabled={loading || !!fetchError || graphData.nodes.length === 0}>JSON</Button>
         </Space>
       </Card>
 
@@ -256,34 +258,60 @@ const GraphWorkspace = () => {
       <div style={{ flex: 1, position: 'relative', background: '#0a0a0a', borderRadius: 8, overflow: 'hidden' }} ref={containerRef}>
         
         {/* Floating Legend */}
-        <div style={{ position: 'absolute', top: 16, left: 16, zIndex: 10, background: 'rgba(20, 20, 20, 0.85)', padding: 12, borderRadius: 8, border: '1px solid #333', backdropFilter: 'blur(4px)' }}>
-          <Text strong style={{ color: '#fff', display: 'block', marginBottom: 8 }}>Entity Legend</Text>
-          {Object.entries(NODE_COLORS).filter(([k]) => k !== 'Unknown').map(([type, color]) => (
-            <div key={type} style={{ display: 'flex', alignItems: 'center', marginBottom: 4 }}>
-              <div style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: color, marginRight: 8 }} />
-              <Text style={{ color: '#aaa', fontSize: 12 }}>{type}</Text>
-            </div>
-          ))}
-        </div>
+        {(!fetchError && !loading && graphData.nodes.length > 0) && (
+          <div style={{ position: 'absolute', top: 16, left: 16, zIndex: 10, background: 'rgba(20, 20, 20, 0.85)', padding: 12, borderRadius: 8, border: '1px solid #333', backdropFilter: 'blur(4px)' }}>
+            <Text strong style={{ color: '#fff', display: 'block', marginBottom: 8 }}>Entity Legend</Text>
+            {Object.entries(NODE_COLORS).filter(([k]) => k !== 'Unknown').map(([type, color]) => (
+              <div key={type} style={{ display: 'flex', alignItems: 'center', marginBottom: 4 }}>
+                <div style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: color, marginRight: 8 }} />
+                <Text style={{ color: '#aaa', fontSize: 12 }}>{type}</Text>
+              </div>
+            ))}
+          </div>
+        )}
 
-        {/* WebGL Graph Engine */}
-        <ForceGraph2D
-          ref={graphRef}
-          width={dimensions.width}
-          height={dimensions.height}
-          graphData={filteredData}
-          nodeLabel={getNodeName}
-          nodeColor={getNodeColor}
-          nodeCanvasObject={paintNode}
-          linkColor={l => EDGE_COLORS[l.type] || EDGE_COLORS.DEFAULT}
-          linkWidth={1.5}
-          linkDirectionalArrowLength={3.5}
-          linkDirectionalArrowRelPos={1}
-          onNodeClick={handleNodeClick}
-          d3AlphaDecay={physicsEnabled ? 0.022 : 1}
-          d3VelocityDecay={0.3}
-          backgroundColor="#0a0a0a"
-        />
+        {/* Enterprise State Handling: Loading, Error, Empty, Success */}
+        {loading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', flexDirection: 'column', gap: 16 }}>
+            <Spin size="large" />
+            <Text style={{ color: '#aaa' }}>Querying Neo4j Database...</Text>
+          </div>
+        ) : fetchError ? (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', flexDirection: 'column', padding: 24, textAlign: 'center' }}>
+            <WarningOutlined style={{ fontSize: 48, color: '#faad14', marginBottom: 16 }} />
+            <Text strong style={{ color: '#fff', fontSize: 18, marginBottom: 8 }}>System Error</Text>
+            <Text type="secondary" style={{ maxWidth: 400 }}>{fetchError}</Text>
+          </div>
+        ) : graphData.nodes.length === 0 ? (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', flexDirection: 'column' }}>
+            <Empty 
+              image={<DatabaseOutlined style={{ fontSize: 64, color: '#333' }} />}
+              description={
+                <span style={{ color: '#888' }}>
+                  No connections found in the Knowledge Graph.
+                </span>
+              }
+            />
+          </div>
+        ) : (
+          <ForceGraph2D
+            ref={graphRef}
+            width={dimensions.width}
+            height={dimensions.height}
+            graphData={filteredData}
+            nodeLabel={getNodeName}
+            nodeColor={getNodeColor}
+            nodeCanvasObject={paintNode}
+            linkColor={l => EDGE_COLORS[l.type] || EDGE_COLORS.DEFAULT}
+            linkWidth={1.5}
+            linkDirectionalArrowLength={3.5}
+            linkDirectionalArrowRelPos={1}
+            onNodeClick={handleNodeClick}
+            d3AlphaDecay={physicsEnabled ? 0.022 : 1}
+            d3VelocityDecay={0.3}
+            backgroundColor="#0a0a0a"
+          />
+        )}
 
       {/* Node Details Drawer */}
         <Drawer
@@ -327,7 +355,7 @@ const GraphWorkspace = () => {
               </div>
 
               <Space direction="vertical" style={{ width: '100%', marginTop: 16 }}>
-                <Button type="primary" icon={<NodeIndexOutlined />} block>Launch Deep Explorer</Button>
+                <Button type="primary" icon={<NodeIndexOutlined />} block style={{ background: '#00B5AD' }}>Launch Deep Explorer</Button>
                 <Button icon={<FilterOutlined />} block onClick={() => setSearchQuery(getNodeName(selectedNode))}>Isolate Subgraph</Button>
               </Space>
             </Space>
