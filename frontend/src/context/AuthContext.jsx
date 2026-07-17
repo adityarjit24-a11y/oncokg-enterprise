@@ -15,7 +15,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password, role) => {
     try {
-      const res = await axios.post('http://localhost:8000/api/v1/auth/login', { email, password, role });
+      const res = await axios.post('https://oncokg-enterprise-production.up.railway.app', { email, password, role });
       const userData = res.data.user;
       userData.token = res.data.access_token;
       setUser(userData);
