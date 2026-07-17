@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import api from '../api/axios'; // Use the configured interceptor instance
+import api from '../api/axios';
 
 const AuthContext = createContext();
 
@@ -7,48 +7,48 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const verifySession = async () => {
-      const storedUser = localStorage.getItem('oncokg_user');
-      if (storedUser) {
-        try {
-          // Silent ping to backend to verify cookie validity
-          // Replace '/auth/verify' with your actual health/me endpoint
-          await api.get('/auth/verify'); 
-          setUser(JSON.parse(storedUser));
-        } catch (error) {
-          // If 401, the interceptor will handle the redirect, but we must clear state
-          setUser(null);
-          localStorage.removeItem('oncokg_user');
-        }
-      }
+  const hydrateSession = async () => {
+    const storedToken = localStorage.getItem('oncokg_access_token');
+    if (!storedToken) {
       setLoading(false);
-    };
+      return;
+    }
+    try {
+      const response = await api.get('/auth/me');
+      setUser(response.data); // Should contain { id, email, role: 'Admin' | 'Researcher' | 'Viewer' }
+    } catch (error) {
+      setUser(null);
+      localStorage.removeItem('oncokg_access_token');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    verifySession();
+  useEffect(() => {
+    hydrateSession();
   }, []);
 
-  const login = (email, role) => {
-    const userData = { email, role };
-    setUser(userData);
-    localStorage.setItem('oncokg_user', JSON.stringify(userData));
+  const login = async (email, password, rememberMe) => {
+    const response = await api.post('/auth/login', { email, password, remember_me: rememberMe });
+    localStorage.setItem('oncokg_access_token', response.data.access_token);
+    setUser(response.data.user);
+    return response.data;
   };
 
   const logout = async () => {
     try {
-      // Must tell backend to destroy the HTTP-only cookie
-      await api.post('/auth/logout'); 
+      await api.post('/auth/logout'); // Tells backend to destroy HttpOnly cookie
     } catch (error) {
-      console.error("Logout request failed, clearing local state anyway");
+      console.error('Logout sync failed');
     } finally {
       setUser(null);
-      localStorage.removeItem('oncokg_user');
-      window.location.href = '/login'; // Hard flush to clear React memory
+      localStorage.removeItem('oncokg_access_token');
+      window.location.href = '/login';
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, logout, loading, hydrateSession }}>
       {!loading && children}
     </AuthContext.Provider>
   );

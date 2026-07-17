@@ -19,3 +19,18 @@ def create_access_token(data: dict):
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+from jose import JWTError, jwt
+
+# Ensure your SECRET_KEY and ALGORITHM variables are accessible here
+# SECRET_KEY = "your-secret-key"
+# ALGORITHM = "HS256"
+
+def verify_and_decode_token(token: str):
+    try:
+        # Token ko decode karke uska payload (data) nikal rahe hain
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_email: str = payload.get("sub")
+        return user_email
+    except JWTError:
+        return None

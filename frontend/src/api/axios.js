@@ -1,56 +1,86 @@
 import axios from 'axios';
 
-// Enterprise Base Configuration
 const api = axios.create({
-  // Ye tumhara backend URL hai jo tumne AuthContext mein use kiya tha
-  baseURL: 'https://oncokg-enterprise-production.up.railway.app', 
-  withCredentials: true,
+  baseURL: 'https://oncokg-enterprise-production.up.railway.app/api/v1',
+  withCredentials: true, // Crucial for sending the HttpOnly refresh cookie
   headers: {
     'Content-Type': 'application/json',
-  }
+  },
 });
 
-// REQUEST INTERCEPTOR: Har API call se pehle automatically Token lagayega
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 api.interceptors.request.use(
   (config) => {
-    const storedUser = localStorage.getItem('oncokg_user');
-    if (storedUser) {
-      const userData = JSON.parse(storedUser);
-      if (userData && userData.token) {
-        config.headers['Authorization'] = `Bearer ${userData.token}`;
-      }
+    const token = localStorage.getItem('oncokg_access_token');
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// RESPONSE INTERCEPTOR: Global Error Handling
 api.interceptors.response.use(
-  (response) => {
-    // Agar response success hai, toh aage badhne do
-    return response;
-  },
-  (error) => {
-    // 1. Agar Backend se 401 Unauthorized (Token Expired) aata hai
-    if (error.response && error.response.status === 401) {
-      
-      // 2. Loop Check: Kya hum pehle se hi login page par hain?
-      const isLoginPage = window.location.pathname === '/login';
-      
-      if (!isLoginPage) {
-        console.warn("Security Alert: Session expired or invalid token. Logging out.");
-        
-        // 3. User ka purana data clear karo
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      // Prevent infinite loops if the refresh endpoint itself fails
+      if (originalRequest.url.includes('/auth/refresh')) {
+        localStorage.removeItem('oncokg_access_token');
         localStorage.removeItem('oncokg_user');
+        window.location.href = '/login?session_expired=true';
+        return Promise.reject(error);
+      }
+
+      if (isRefreshing) {
+        return new Promise(function (resolve, reject) {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            originalRequest.headers['Authorization'] = 'Bearer ' + token;
+            return api(originalRequest);
+          })
+          .catch((err) => Promise.reject(err));
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        // Silent request to backend; relies on HttpOnly cookie
+        const { data } = await api.post('/auth/refresh');
         
-        // 4. User ko Login par bhejo aur URL mein '?expired=true' laga do taaki UI message dikha sake
-        window.location.href = '/login?expired=true';
+        localStorage.setItem('oncokg_access_token', data.access_token);
+        api.defaults.headers.common['Authorization'] = 'Bearer ' + data.access_token;
+        originalRequest.headers['Authorization'] = 'Bearer ' + data.access_token;
+        
+        processQueue(null, data.access_token);
+        return api(originalRequest);
+      } catch (err) {
+        processQueue(err, null);
+        localStorage.removeItem('oncokg_access_token');
+        localStorage.removeItem('oncokg_user');
+        window.location.href = '/login?session_expired=true';
+        return Promise.reject(err);
+      } finally {
+        isRefreshing = false;
       }
     }
-    
     return Promise.reject(error);
   }
 );

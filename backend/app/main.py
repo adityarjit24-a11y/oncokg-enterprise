@@ -103,3 +103,26 @@ async def ai_chat(request: Request):
 async def legacy_graph_redirect():
     # Frontend agar /graph maange, toh use seedha /api/v1/graph par bhej do
     return RedirectResponse(url="/api/v1/graph")
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI(title="OncoKG Enterprise API")
+
+# STRICT CORS POLICY (Production mein '*' bilkul allow mat karna)
+# Yahan sirf apna exact Vercel URL likho (last mein '/' nahi aana chahiye)
+origins = [
+    "https://oncokg-enterprise.vercel.app", # YEH TUMHARA PRODUCTION FRONTEND HAI
+    "http://localhost:3000",                # Agar local dev React use karte ho
+    "http://localhost:5173"                 # Agar local dev Vite use karte ho
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True, # Ye True hona chahiye cookies/tokens ke liye
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"], # Sirf allowed methods
+    allow_headers=["*"], 
+)
+
+# ... baaki tumhara backend code ...

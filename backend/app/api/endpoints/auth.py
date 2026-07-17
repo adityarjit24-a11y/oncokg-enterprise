@@ -1,34 +1,71 @@
-from fastapi import APIRouter, HTTPException, Response
-from pydantic import BaseModel
-from app.core.security import create_access_token
+from fastapi import APIRouter, Depends, HTTPException, Response, Cookie
+from sqlalchemy.orm import Session
+from datetime import timedelta
+
+from db.database import get_db
+from models.user import User
+from schemas.auth import LoginRequest
+from core.security import (
+    verify_password, 
+    create_access_token, 
+    create_refresh_token, 
+    verify_and_decode_token
+)
 
 router = APIRouter()
 
-class LoginRequest(BaseModel):
-    email: str
-    password: str
-    role: str = "Researcher"
-
 @router.post("/login")
-def login(req: LoginRequest, response: Response):
-    # Mocking DB validation for phase 4. In prod, check Neo4j/Postgres.
-    if "@" not in req.email or len(req.password) < 4:
+def login(
+    response: Response,
+    payload: LoginRequest,
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.email == payload.email).first()
+    if not user or not verify_password(payload.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    # Dynamic Expiration based on Remember Me
+    refresh_exp = timedelta(days=7) if payload.remember_me else timedelta(hours=12)
     
-    access_token = create_access_token(data={"sub": req.email, "role": req.role})
-    
-    # CRITICAL FIX: Set httpOnly Cookie for Enterprise Security
+    access_token = create_access_token(data={"sub": user.email, "role": user.role})
+    refresh_token = create_refresh_token(data={"sub": user.email}, expires_delta=refresh_exp)
+
+    # SECURE COOKIE ATTACHMENT
     response.set_cookie(
-        key="access_token",
-        value=f"Bearer {access_token}",
+        key="refresh_token",
+        value=refresh_token,
         httponly=True,
-        secure=False,    # Set to True when you deploy with HTTPS
+        secure=True, # Requires HTTPS in production
         samesite="lax",
-        max_age=1800     # 30 minutes
+        max_age=int(refresh_exp.total_seconds())
     )
-    
-    # We return the user data for the UI, but the token stays hidden in the cookie!
+
     return {
-        "message": "Successfully logged in",
-        "user": {"email": req.email, "name": req.email.split('@')[0], "role": req.role}
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {"id": user.id, "email": user.email, "role": user.role}
     }
+
+@router.post("/refresh")
+def refresh_session(
+    response: Response,
+    refresh_token: str = Cookie(None),
+    db: Session = Depends(get_db)
+):
+    if not refresh_token:
+        raise HTTPException(status_code=401, detail="Refresh token missing")
+    
+    # Validate refresh token and extract user logic here
+    user_email = verify_and_decode_token(refresh_token) 
+    if not user_email:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+    user = db.query(User).filter(User.email == user_email).first()
+    
+    new_access_token = create_access_token(data={"sub": user.email, "role": user.role})
+    return {"access_token": new_access_token}
+
+@router.post("/logout")
+def logout(response: Response):
+    response.delete_cookie(key="refresh_token", httponly=True, secure=True, samesite="lax")
+    return {"message": "Session securely terminated"}
