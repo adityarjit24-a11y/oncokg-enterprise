@@ -6,7 +6,7 @@ from neo4j import GraphDatabase
 
 # Auth router import (Ensure karna ki path tumhare folder jaisa hi ho)
 # Agar pichli baar 'api.endpoints import auth' chal raha tha toh wahi rakhna
-from api.endpoints import auth 
+from app.api.endpoints import auth
 
 # Sirf ek baar app initialize hoga
 app = FastAPI(title="OncoKG Enterprise API")
