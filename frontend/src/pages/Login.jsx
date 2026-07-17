@@ -33,7 +33,8 @@ const Login = () => {
       login(response.data.user.email, response.data.user.role);
       
       // 3. Redirect to dashboard
-      navigate('/');
+      // Laga do
+ window.location.href = '/';
       
     } catch (err) {
       // 4. Robust Error Handling
