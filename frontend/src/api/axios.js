@@ -1,11 +1,10 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'https://oncokg-enterprise-production.up.railway.app/api/v1',
-  withCredentials: true, // Crucial for sending the HttpOnly refresh cookie
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  // Ensure /api/v1 is appended here!
+  baseURL: 'https://oncokg-enterprise-production.up.railway.app/api/v1', 
+  withCredentials: true,
+  // ... rest of the code
 });
 
 let isRefreshing = false;

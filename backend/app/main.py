@@ -20,7 +20,6 @@ app.add_middleware(
 
 # 1. Auth Router Include
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
-
 import os
 
 # Naye, clean variables load karo
