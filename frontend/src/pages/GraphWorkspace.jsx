@@ -61,7 +61,7 @@ const GraphWorkspace = () => {
   const [graphData, setGraphData] = useState({ nodes: [], links: [] });
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState(null); // Added Error State
+  const [fetchError, setFetchError] = useState(null); 
   
   // UI State
   const [selectedNode, setSelectedNode] = useState(null);
@@ -85,7 +85,7 @@ const GraphWorkspace = () => {
     return () => observer.disconnect();
   }, []);
 
-  // Fetch Data (With AbortController to prevent Race Conditions/Memory Leaks)
+  // Fetch Data
   useEffect(() => {
     const controller = new AbortController();
 
@@ -93,11 +93,10 @@ const GraphWorkspace = () => {
       try {
         setLoading(true);
         setFetchError(null);
-        // Using signal to allow cancellation
         const res = await api.get('/graph', { signal: controller.signal });
         
         if (!res.data || !res.data.nodes || res.data.nodes.length === 0) {
-          setGraphData({ nodes: [], links: [] }); // Set empty to trigger empty state
+          setGraphData({ nodes: [], links: [] }); 
         } else {
           setGraphData(res.data);
         }
@@ -115,12 +114,10 @@ const GraphWorkspace = () => {
     };
     
     fetchGraph();
-
-    // Cleanup function to abort request on unmount
     return () => controller.abort();
   }, []);
 
-  // Filter Logic (Memoized)
+  // Filter Logic (Memoized & Crash-Proofed)
   const filteredData = useMemo(() => {
     let { nodes, links } = graphData;
 
@@ -134,14 +131,17 @@ const GraphWorkspace = () => {
     
     const validNodeIds = new Set(nodes.map(n => n.id));
     
-    links = links.filter(l => {
-      const sourceId = typeof l.source === 'object' ? l.source.id : l.source;
-      const targetId = typeof l.target === 'object' ? l.target.id : l.target;
+    // ✅ FIX 2: Sanitize Links to prevent D3 Crash
+    const safeLinks = links.map(l => ({
+      ...l,
+      source: typeof l.source === 'object' ? l.source.id : l.source,
+      target: typeof l.target === 'object' ? l.target.id : l.target
+    })).filter(l => {
       const edgeValid = edgeTypeFilters.length === 0 || edgeTypeFilters.includes(l.type);
-      return validNodeIds.has(sourceId) && validNodeIds.has(targetId) && edgeValid;
+      return validNodeIds.has(l.source) && validNodeIds.has(l.target) && edgeValid;
     });
 
-    return { nodes, links };
+    return { nodes, links: safeLinks };
   }, [graphData, nodeTypeFilters, edgeTypeFilters, searchQuery]);
 
   // Canvas Drawing Methods
@@ -156,12 +156,10 @@ const GraphWorkspace = () => {
     ctx.fillStyle = getNodeColor(node);
     ctx.fill();
 
-    // Outline
     ctx.lineWidth = isSelected ? 2 / globalScale : 1 / globalScale;
     ctx.strokeStyle = isSelected ? '#ffffff' : '#141414';
     ctx.stroke();
 
-    // Text
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = isSelected ? '#ffffff' : 'rgba(255, 255, 255, 0.8)';
@@ -182,13 +180,18 @@ const GraphWorkspace = () => {
 
   // Exports
   const exportPNG = useCallback(() => {
-    if (!graphRef.current) return;
-    const canvas = graphRef.current.renderer().domElement;
-    const link = document.createElement('a');
-    link.download = 'oncokg-network.png';
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-    messageApi.success("Graph exported as PNG");
+    if (!containerRef.current) return;
+    // ✅ FIX 4: Correctly target the 2D Canvas for export
+    const canvas = containerRef.current.querySelector('canvas');
+    if (canvas) {
+      const link = document.createElement('a');
+      link.download = 'oncokg-network.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      messageApi.success("Graph exported as PNG");
+    } else {
+      messageApi.error("Canvas not found for export");
+    }
   }, [messageApi]);
 
   const exportJSON = useCallback(() => {
@@ -257,7 +260,6 @@ const GraphWorkspace = () => {
       {/* Main Canvas Area */}
       <div style={{ flex: 1, position: 'relative', background: '#0a0a0a', borderRadius: 8, overflow: 'hidden' }} ref={containerRef}>
         
-        {/* Floating Legend */}
         {(!fetchError && !loading && graphData.nodes.length > 0) && (
           <div style={{ position: 'absolute', top: 16, left: 16, zIndex: 10, background: 'rgba(20, 20, 20, 0.85)', padding: 12, borderRadius: 8, border: '1px solid #333', backdropFilter: 'blur(4px)' }}>
             <Text strong style={{ color: '#fff', display: 'block', marginBottom: 8 }}>Entity Legend</Text>
@@ -270,7 +272,6 @@ const GraphWorkspace = () => {
           </div>
         )}
 
-        {/* Enterprise State Handling: Loading, Error, Empty, Success */}
         {loading ? (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', flexDirection: 'column', gap: 16 }}>
             <Spin size="large" />
@@ -286,11 +287,7 @@ const GraphWorkspace = () => {
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', flexDirection: 'column' }}>
             <Empty 
               image={<DatabaseOutlined style={{ fontSize: 64, color: '#333' }} />}
-              description={
-                <span style={{ color: '#888' }}>
-                  No connections found in the Knowledge Graph.
-                </span>
-              }
+              description={<span style={{ color: '#888' }}>No connections found in the Knowledge Graph.</span>}
             />
           </div>
         ) : (
@@ -299,6 +296,7 @@ const GraphWorkspace = () => {
             width={dimensions.width}
             height={dimensions.height}
             graphData={filteredData}
+            nodeId="id" // ✅ FIX 1: Explicitly defining nodeId so edges can connect
             nodeLabel={getNodeName}
             nodeColor={getNodeColor}
             nodeCanvasObject={paintNode}
@@ -307,8 +305,7 @@ const GraphWorkspace = () => {
             linkDirectionalArrowLength={3.5}
             linkDirectionalArrowRelPos={1}
             onNodeClick={handleNodeClick}
-            d3AlphaDecay={physicsEnabled ? 0.022 : 1}
-            d3VelocityDecay={0.3}
+            cooldownTicks={physicsEnabled ? Infinity : 0} // ✅ FIX 3: Proper Physics Toggle
             backgroundColor="#0a0a0a"
           />
         )}
@@ -348,15 +345,15 @@ const GraphWorkspace = () => {
                 <Row gutter={16}>
                   <Col span={12}>
                     <Card size="small" style={{ background: '#141414', borderColor: '#333' }}>
-                      <Statistic title="Degree" value={graphData.links.filter(l => l.source.id === selectedNode.id || l.target.id === selectedNode.id).length} valueStyle={{ color: '#fff', fontSize: 18 }} />
+                      <Statistic title="Degree" value={graphData.links.filter(l => (l.source.id || l.source) === selectedNode.id || (l.target.id || l.target) === selectedNode.id).length} valueStyle={{ color: '#fff', fontSize: 18 }} />
                     </Card>
                   </Col>
                 </Row>
               </div>
 
               <Space direction="vertical" style={{ width: '100%', marginTop: 16 }}>
-                <Button type="primary" icon={<NodeIndexOutlined />} block style={{ background: '#00B5AD' }}>Launch Deep Explorer</Button>
-                <Button icon={<FilterOutlined />} block onClick={() => setSearchQuery(getNodeName(selectedNode))}>Isolate Subgraph</Button>
+                <Button type="primary" icon={<NodeIndexOutlined />} block style={{ background: '#00B5AD' }} onClick={() => messageApi.success('Routing to Deep Explorer... (Module Pending)')}>Launch Deep Explorer</Button>
+                <Button icon={<FilterOutlined />} block onClick={() => { setSearchQuery(getNodeName(selectedNode)); messageApi.info('Subgraph Isolated based on node name.'); }}>Isolate Subgraph</Button>
               </Space>
             </Space>
           )}
