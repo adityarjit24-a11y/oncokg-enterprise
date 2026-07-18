@@ -24,7 +24,8 @@ export const DrugExplorer = () => {
     </>
   );
 
-  return <SharedExplorer title="Drug Explorer" subtitle="Search and filter pharmaceutical compounds and targeted therapies." endpoint="drugs" columns={columns} detailLayout={detailLayout} />;
+  // FIX: 'drugs' ki jagah 'explore/drugs' kar diya
+  return <SharedExplorer title="Drug Explorer" subtitle="Search and filter pharmaceutical compounds and targeted therapies." endpoint="explore/drugs" columns={columns} detailLayout={detailLayout} />;
 };
 
 // --- 2. Gene Explorer ---
@@ -45,7 +46,8 @@ export const GeneExplorer = () => {
     </>
   );
 
-  return <SharedExplorer title="Gene Explorer" subtitle="Analyze oncogenes, tumor suppressors, and biomarkers." endpoint="genes" columns={columns} detailLayout={detailLayout} />;
+  // FIX: 'genes' ki jagah 'explore/genes'
+  return <SharedExplorer title="Gene Explorer" subtitle="Analyze oncogenes, tumor suppressors, and biomarkers." endpoint="explore/genes" columns={columns} detailLayout={detailLayout} />;
 };
 
 // --- 3. Mutation Explorer ---
@@ -67,7 +69,8 @@ export const MutationExplorer = () => {
     </>
   );
 
-  return <SharedExplorer title="Mutation Explorer" subtitle="Investigate actionable somatic mutations and resistance mechanisms." endpoint="mutations" columns={columns} detailLayout={detailLayout} />;
+  // FIX: 'mutations' ki jagah 'explore/mutations'
+  return <SharedExplorer title="Mutation Explorer" subtitle="Investigate actionable somatic mutations and resistance mechanisms." endpoint="explore/mutations" columns={columns} detailLayout={detailLayout} />;
 };
 
 // --- 4. Clinical Trials ---
@@ -89,7 +92,8 @@ export const ClinicalTrials = () => {
     </>
   );
 
-  return <SharedExplorer title="Clinical Trials" subtitle="Track active oncology clinical trials and trial outcomes." endpoint="trials" columns={columns} detailLayout={detailLayout} />;
+  // FIX: 'trials' ki jagah 'explore/trials'
+  return <SharedExplorer title="Clinical Trials" subtitle="Track active oncology clinical trials and trial outcomes." endpoint="explore/trials" columns={columns} detailLayout={detailLayout} />;
 };
 
 // --- 5. Publications ---
@@ -111,5 +115,6 @@ export const Publications = () => {
     </>
   );
 
-  return <SharedExplorer title="Publications" subtitle="Query indexed biomedical literature and supporting evidence." endpoint="publications" columns={columns} detailLayout={detailLayout} />;
+  // FIX: 'publications' ki jagah 'explore/publications'
+  return <SharedExplorer title="Publications" subtitle="Query indexed biomedical literature and supporting evidence." endpoint="explore/publications" columns={columns} detailLayout={detailLayout} />;
 };
