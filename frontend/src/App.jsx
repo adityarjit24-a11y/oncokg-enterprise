@@ -1,25 +1,27 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
+// Ant Design & Premium Theme Engine
+import { ConfigProvider, App as AntApp, Spin } from 'antd';
+import { enterpriseTheme } from './theme/enterpriseTheme';
+import 'antd/dist/reset.css';
+
 // Contexts & Layouts
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
-import MainLayout from './layouts/MainLayout';
+// 🛠️ CHANGED: Swapped MainLayout with our new premium EnterpriseLayout
+import EnterpriseLayout from './layouts/EnterpriseLayout'; 
 
 // Components & Security
 import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
-
-// Global UI
-import { Spin } from 'antd';
-import 'antd/dist/reset.css';
 
 // Eagerly Loaded Pages
 import Login from './pages/Login';
 
 // Lazy Loaded Enterprise Modules (Performance Optimization)
 const Dashboard = lazy(() => import('./pages/Dashboard'));
-const GraphWorkspace = lazy(() => import('./pages/GraphWorkspace'));
+const GraphWorkspace = lazy(() => import('./pages/GraphWorkspace')); // Note: Check if filename is GraphWorkspace or KnowledgeGraph
 const AIAssistant = lazy(() => import('./pages/AIAssistant'));
 const SimulationLab = lazy(() => import('./pages/SimulationLab'));
 const SystemWorkspace = lazy(() => import('./pages/SystemWorkspace'));
@@ -32,9 +34,9 @@ const MutationExplorer = lazy(() => import('./pages/Explorers').then(module => (
 const ClinicalTrials = lazy(() => import('./pages/Explorers').then(module => ({ default: module.ClinicalTrials })));
 const Publications = lazy(() => import('./pages/Explorers').then(module => ({ default: module.Publications })));
 
-// Global Loading Skeleton for Suspense
+// Global Loading Skeleton for Suspense (Upgraded with dark theme colors)
 const Loader = () => (
-  <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#0a0a0a' }}>
+  <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#0d1117' }}>
     <Spin size="large" tip="Loading Enterprise Module..." />
   </div>
 );
@@ -48,11 +50,13 @@ const AppRoutes = () => {
 
         {/* SECURE ROUTES - Requires Authentication */}
         <Route element={<ProtectedRoute />}>
-          {/* WRAP IN MAIN LAYOUT (Sidebar, Navbar) */}
-          <Route element={<MainLayout />}>
+          
+          {/* 💎 WRAP IN PREMIUM ENTERPRISE LAYOUT (Sidebar, Navbar, Cmd+K, Floating AI) */}
+          <Route element={<EnterpriseLayout />}>
             
-            {/* Level 1: Accessible by All Authenticated Users (Viewers, Researchers, Admins) */}
+            {/* Level 1: Accessible by All Authenticated Users */}
             <Route index element={<Dashboard />} />
+            <Route path="dashboard" element={<Dashboard />} />
             <Route path="analytics" element={<Analytics />} />
             <Route path="drugs" element={<DrugExplorer />} />
             <Route path="genes" element={<GeneExplorer />} />
@@ -76,7 +80,7 @@ const AppRoutes = () => {
         </Route>
 
         {/* 404 CATCH-ALL REDIRECT */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </Suspense>
   );
@@ -85,13 +89,18 @@ const AppRoutes = () => {
 const App = () => {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <ThemeProvider>
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
-        </ThemeProvider>
-      </AuthProvider>
+      {/* 💎 INJECTED CONFIG PROVIDER FOR PREMIUM UI TOKENS */}
+      <ConfigProvider theme={enterpriseTheme}>
+        <AntApp>
+          <AuthProvider>
+            <ThemeProvider>
+              <BrowserRouter>
+                <AppRoutes />
+              </BrowserRouter>
+            </ThemeProvider>
+          </AuthProvider>
+        </AntApp>
+      </ConfigProvider>
     </ErrorBoundary>
   );
 };
