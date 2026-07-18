@@ -1,6 +1,7 @@
 // src/layouts/EnterpriseLayout.jsx
 import React, { useState, useEffect } from 'react';
-import { Layout, Menu, Input, Modal, Button, Avatar, Dropdown, Space, Badge, Tooltip, Typography } from 'antd';
+import { Layout, Menu, Input, Modal, Button, Avatar, Space, Badge, Tooltip, Typography } from 'antd';
+// ✅ FIX: Imported all the missing icons for the restored sidebar options
 import { 
   SearchOutlined, 
   AppstoreOutlined, 
@@ -11,16 +12,19 @@ import {
   BookOutlined,
   DatabaseOutlined,
   ExperimentOutlined,
-  UserOutlined
+  UserOutlined,
+  AreaChartOutlined,
+  GoldOutlined,
+  BugOutlined,
+  FileTextOutlined,
+  TeamOutlined
 } from '@ant-design/icons';
-// ✅ FIX: Added Outlet here from react-router-dom
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import '../styles/glassmorphism.css'; 
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
 
-// ✅ FIX: Removed { children } from here since we are using Outlet for nested routes
 const EnterpriseLayout = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
@@ -39,16 +43,21 @@ const EnterpriseLayout = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // ✅ FIX: Restored all missing options and synced exact paths with App.jsx
   const menuItems = [
     { key: '/dashboard', icon: <AppstoreOutlined />, label: 'Dashboard' },
+    { key: '/analytics', icon: <AreaChartOutlined />, label: 'Analytics' },
     { key: '/graph', icon: <ShareAltOutlined />, label: 'Knowledge Graph' },
     { key: '/simulation', icon: <ExperimentOutlined />, label: 'Simulation Lab' },
     { type: 'divider' },
-    { key: '/explorers/drugs', icon: <DatabaseOutlined />, label: 'Drug Explorer' },
-    { key: '/explorers/trials', icon: <BookOutlined />, label: 'Clinical Trials' },
+    { key: '/drugs', icon: <DatabaseOutlined />, label: 'Drug Explorer' },
+    { key: '/genes', icon: <GoldOutlined />, label: 'Gene Explorer' },
+    { key: '/mutations', icon: <BugOutlined />, label: 'Mutation Explorer' },
+    { key: '/trials', icon: <BookOutlined />, label: 'Clinical Trials' },
+    { key: '/publications', icon: <FileTextOutlined />, label: 'Publications' },
     { type: 'divider' },
-    { key: '/workspace/team', icon: <UserOutlined />, label: 'Team Workspace' },
-    { key: '/settings', icon: <SettingOutlined />, label: 'System Settings' },
+    { key: '/workspace/team', icon: <TeamOutlined />, label: 'Team Workspace' },
+    { key: '/system', icon: <SettingOutlined />, label: 'System Settings' },
   ];
 
   return (
@@ -129,14 +138,13 @@ const EnterpriseLayout = () => {
         {/* 📄 Content Area with Smooth Transitions */}
         <Content style={{ padding: '24px', position: 'relative', overflowY: 'auto' }}>
           <div className="fade-in-up">
-            {/* ✅ FIX: Replaced {children} with <Outlet /> to render nested routes */}
             <Outlet />
           </div>
         </Content>
       </Layout>
 
       {/* 🤖 Floating AI Assistant */}
-      <Tooltip title="Ask OncoAI (Ctrl + /)" placement="left">
+      <Tooltip title="Ask OncoAI" placement="left">
         <Button 
           type="primary" 
           shape="circle" 
@@ -151,7 +159,7 @@ const EnterpriseLayout = () => {
             boxShadow: '0 8px 24px rgba(94, 106, 210, 0.4)',
             zIndex: 1000
           }}
-          onClick={() => navigate('/ai-assistant')}
+          onClick={() => navigate('/ai')} // ✅ FIX: Updated path to match App.jsx
         />
       </Tooltip>
 
