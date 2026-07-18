@@ -2,7 +2,8 @@ import React from 'react';
 import { Tabs, Card, Table, Switch, Form, Input, Button, Typography, Tag } from 'antd';
 import { SettingOutlined, TeamOutlined, SaveOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 
-const { Title } = Typography;
+// ✅ FIX: Typography se Text ko AntText ke naam se nikaal liya
+const { Title, Text: AntText } = Typography;
 
 const SystemWorkspace = () => {
   const users = [{ key: '1', email: 'admin@oncokg.com', role: 'Administrator', status: 'Active' }];
@@ -29,7 +30,8 @@ const SystemWorkspace = () => {
     {
       key: '3',
       label: <span><SaveOutlined /> Saved Queries</span>,
-      children: <Table dataSource={queries} columns={[{title: 'Query Name', dataIndex: 'name'}, {title: 'Cypher', dataIndex: 'query', render: t => <Text code>{t}</Text>}, {title: 'Action', render: () => <Button size="small">Execute</Button>}]} />
+      // ✅ FIX: <Text> ki jagah <AntText> ka use kiya gaya hai
+      children: <Table dataSource={queries} columns={[{title: 'Query Name', dataIndex: 'name'}, {title: 'Cypher', dataIndex: 'query', render: t => <AntText code>{t}</AntText>}, {title: 'Action', render: () => <Button size="small">Execute</Button>}]} />
     },
     {
       key: '4',
