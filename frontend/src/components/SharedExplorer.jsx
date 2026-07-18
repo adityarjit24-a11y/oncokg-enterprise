@@ -3,9 +3,8 @@ import { Card, Table, Input, Space, Typography, Button, Descriptions } from 'ant
 import { SearchOutlined, ReloadOutlined } from '@ant-design/icons';
 import api from '../api/axios';
 
-const { Title } = Typography;
+const { Title, Text: AntText } = Typography; // ✅ FIX: Text ko AntText rename kiya
 
-// props: title, subtitle, endpoint, columns, detailLayout
 const SharedExplorer = ({ title, subtitle, endpoint, columns, detailLayout }) => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -26,7 +25,6 @@ const SharedExplorer = ({ title, subtitle, endpoint, columns, detailLayout }) =>
 
     setLoading(true);
     try {
-      // ✅ FIX: Hardcoded URL hata kar prop se aaya hua endpoint use kiya
       const response = await api.get(`/${endpoint}`, {
         params: { page, limit, search },
         signal: abortController.current.signal
@@ -45,7 +43,7 @@ const SharedExplorer = ({ title, subtitle, endpoint, columns, detailLayout }) =>
     } finally {
       setLoading(false);
     }
-  }, [endpoint]); // Dependency array mein endpoint zaruri hai
+  }, [endpoint]);
 
   useEffect(() => {
     fetchData(1, 10, '');
@@ -70,7 +68,8 @@ const SharedExplorer = ({ title, subtitle, endpoint, columns, detailLayout }) =>
         title={<Title level={4} style={{ margin: 0 }}>{title}</Title>}
         extra={
           <Space>
-            <Text type="secondary" style={{ marginRight: 10 }}>{subtitle}</Text>
+            {/* ✅ FIX: Typography.Text ki jagah AntText use kiya */}
+            <AntText type="secondary" style={{ marginRight: 10 }}>{subtitle}</AntText>
             <Input
               placeholder="Search..."
               prefix={<SearchOutlined />}
@@ -100,7 +99,6 @@ const SharedExplorer = ({ title, subtitle, endpoint, columns, detailLayout }) =>
             showTotal: (total) => `Total ${total} items`,
           }}
           onChange={handleTableChange}
-          // ✅ FIX: Yahan detailLayout prop ka use karke expand row render kiya
           expandable={{
             expandedRowRender: (record) => (
               <div style={{ padding: '16px', background: '#fafafa' }}>
