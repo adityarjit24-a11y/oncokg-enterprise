@@ -64,6 +64,14 @@ const AppRoutes = () => {
             <Route path="trials" element={<ClinicalTrials />} />
             <Route path="publications" element={<Publications />} />
 
+            {/* ✅ FIX: Added Team Workspace Placeholder Route */}
+            <Route path="workspace/team" element={
+              <div style={{ color: '#c9d1d9', textAlign: 'center', marginTop: '100px' }}>
+                <h2 style={{ color: '#fff' }}>Team Workspace Module</h2>
+                <p>Real-time collaboration features are under development for Phase 2.</p>
+              </div>
+            } />
+
             {/* Level 2: Advanced Tools (Only Researchers & Admins) */}
             <Route element={<ProtectedRoute allowedRoles={['Admin', 'Researcher']} />}>
               <Route path="graph" element={<GraphWorkspace />} />
