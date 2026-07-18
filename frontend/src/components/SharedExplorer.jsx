@@ -101,8 +101,13 @@ const SharedExplorer = ({ title, subtitle, endpoint, columns, detailLayout }) =>
           onChange={handleTableChange}
           expandable={{
             expandedRowRender: (record) => (
-              <div style={{ padding: '16px', background: '#1d1d1d', border: '1px solid #333', borderRadius: '8px' }}>
-                <Descriptions bordered column={2}>
+              <div style={{ padding: '24px', background: '#141414', border: '1px solid #333', borderRadius: '8px' }}>
+                {/* ✅ FIX: Removed 'bordered' prop which forces white bg, added custom colors */}
+                <Descriptions 
+                  column={2} 
+                  labelStyle={{ color: '#00B5AD', fontWeight: 'bold' }} 
+                  contentStyle={{ color: '#e0e0e0' }}
+                >
                   {detailLayout(record)}
                 </Descriptions>
               </div>
