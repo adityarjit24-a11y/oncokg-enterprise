@@ -35,6 +35,11 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
+    // 🚨 FIX: Strict URL matching taaki login par kabhi refresh logic trigger na ho
+    if (originalRequest.url === '/auth/login' || originalRequest.url.endsWith('/auth/login')) {
+      return Promise.reject(error);
+    }
+
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (originalRequest.url.includes('/auth/refresh')) {
         localStorage.removeItem('oncokg_access_token');
