@@ -1,10 +1,12 @@
 from datetime import datetime, timedelta
-from jose import jwt
 from passlib.context import CryptContext
+from jose import jwt, JWTError
 
-SECRET_KEY = "enterprise_super_secret_key_change_in_production"
+# Secret keys (Production mein inko .env mein daalna chahiye)
+SECRET_KEY = "your-super-secret-key-change-this"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 1440 # 24 hours
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+REFRESH_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7 # 7 days
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -14,23 +16,29 @@ def verify_password(plain_password, hashed_password):
 def get_password_hash(password):
     return pwd_context.hash(password)
 
-def create_access_token(data: dict):
+def create_access_token(data: dict, expires_delta: timedelta = None):
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
 
-from jose import JWTError, jwt
-
-# Ensure your SECRET_KEY and ALGORITHM variables are accessible here
-# SECRET_KEY = "your-secret-key"
-# ALGORITHM = "HS256"
+def create_refresh_token(data: dict, expires_delta: timedelta = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=REFRESH_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
 
 def verify_and_decode_token(token: str):
     try:
-        # Token ko decode karke uska payload (data) nikal rahe hain
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_email: str = payload.get("sub")
-        return user_email
+        return payload
     except JWTError:
         return None
