@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Card, Typography, Table, Tag, Progress, Space, Divider, Spin, Button, Radio, message } from 'antd';
+import { Row, Col, Card, Typography, Table, Tag, Progress, Space, Divider, Button, Radio, message, Skeleton } from 'antd';
 import { PieChartOutlined, BarChartOutlined, WarningOutlined, CheckCircleOutlined, DownloadOutlined, FilterOutlined } from '@ant-design/icons';
 import api from '../api/axios';
 
@@ -22,29 +22,27 @@ const Analytics = () => {
   const fetchAnalytics = async (range) => {
     setLoading(true);
     try {
-      // 🔄 Real API Call with query parameters for filtering
       const response = await api.get(`/analytics/summary?range=${range}`);
       if(response.data) setAnalyticsData(response.data);
     } catch (error) {
-      // 🧠 Dynamic Demo Engine: Modifies mock data slightly based on the filter to simulate real API behavior
       setTimeout(() => {
         const multiplier = range === '7days' ? 0.3 : range === '30days' ? 0.6 : 1;
         setAnalyticsData({
           variants: range === '7days' ? baseVariants.slice(0, 3) : baseVariants,
           classifications: [
-            { name: 'Missense Mutations', percent: Math.round(45 * multiplier) || 12, color: '#1890ff' },
-            { name: 'Gene Amplifications', percent: Math.round(25 * multiplier) || 8, color: '#722ed1' },
-            { name: 'Truncating Mutations', percent: Math.round(20 * multiplier) || 5, color: '#faad14' },
-            { name: 'Structural Fusions', percent: Math.round(10 * multiplier) || 2, color: '#f5222d' },
+            { name: 'Missense Mutations', percent: Math.round(45 * multiplier) || 12, color: '#5e6ad2' }, // Linear Blue
+            { name: 'Gene Amplifications', percent: Math.round(25 * multiplier) || 8, color: '#8957e5' }, // Deep Purple
+            { name: 'Truncating Mutations', percent: Math.round(20 * multiplier) || 5, color: '#d29922' }, // Warning Gold
+            { name: 'Structural Fusions', percent: Math.round(10 * multiplier) || 2, color: '#f85149' }, // Error Red
           ],
           trials: [
-            { phase: 'Phase III Active', count: Math.round(415 * multiplier), percent: 65, color: '#52c41a' },
-            { phase: 'Phase II Active', count: Math.round(890 * multiplier), percent: 85, color: '#1890ff' },
-            { phase: 'Phase I / Dose Escalation', count: Math.round(1240 * multiplier), percent: 100, color: '#faad14' },
+            { phase: 'Phase III Active', count: Math.round(415 * multiplier), percent: 65, color: '#2ea043' },
+            { phase: 'Phase II Active', count: Math.round(890 * multiplier), percent: 85, color: '#5e6ad2' },
+            { phase: 'Phase I / Dose Escalation', count: Math.round(1240 * multiplier), percent: 100, color: '#d29922' },
           ]
         });
         setLoading(false);
-      }, 600); // Artificial latency for realism
+      }, 600); 
     }
   };
 
@@ -52,20 +50,13 @@ const Analytics = () => {
     fetchAnalytics(timeRange);
   }, [timeRange]);
 
-  // 📄 Enterprise CSV Export Functionality
   const handleExportCSV = () => {
     if (!analyticsData.variants.length) {
       message.warning('No data available to export.');
       return;
     }
-    
-    // Create CSV Headers
     const headers = ['Target Gene,Variant / Alteration,Primary Indication,OncoKB Evidence,Clinical Status'];
-    // Map Data
-    const rows = analyticsData.variants.map(row => 
-      `${row.gene},${row.variant},"${row.disease}",${row.evidence},${row.status}`
-    );
-    
+    const rows = analyticsData.variants.map(row => `${row.gene},${row.variant},"${row.disease}",${row.evidence},${row.status}`);
     const csvContent = "data:text/csv;charset=utf-8," + headers.concat(rows).join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
@@ -74,93 +65,112 @@ const Analytics = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
     message.success('Analytics report exported successfully!');
   };
 
   const columns = [
-    { title: 'Target Gene', dataIndex: 'gene', key: 'gene', render: (text) => <Text strong style={{ color: '#1890ff' }}>{text}</Text> },
-    { title: 'Variant / Alteration', dataIndex: 'variant', key: 'variant', render: (text) => <Text code>{text}</Text> },
-    { title: 'Primary Indication', dataIndex: 'disease', key: 'disease' },
-    { title: 'OncoKB Evidence', dataIndex: 'evidence', key: 'evidence', render: (level) => <Tag color={level === 'Level 1' ? 'green' : 'geekblue'}>{level}</Tag> },
+    { title: 'Target Gene', dataIndex: 'gene', key: 'gene', render: (text) => <Text strong style={{ color: '#5e6ad2' }}>{text}</Text> },
+    { title: 'Variant / Alteration', dataIndex: 'variant', key: 'variant', render: (text) => <Text code style={{ background: 'rgba(255,255,255,0.05)', color: '#c9d1d9', border: '1px solid #30363d' }}>{text}</Text> },
+    { title: 'Primary Indication', dataIndex: 'disease', key: 'disease', render: (text) => <Text style={{ color: '#c9d1d9' }}>{text}</Text> },
+    { title: 'OncoKB Evidence', dataIndex: 'evidence', key: 'evidence', render: (level) => <Tag color={level === 'Level 1' ? 'success' : 'processing'} style={{ background: 'transparent', border: `1px solid ${level === 'Level 1' ? '#2ea043' : '#5e6ad2'}`, color: level === 'Level 1' ? '#2ea043' : '#5e6ad2' }}>{level}</Tag> },
     { title: 'Clinical Status', dataIndex: 'status', key: 'status', render: (status) => {
-        let color = status.includes('Resistance') ? 'volcano' : 'success';
-        let icon = status.includes('Resistance') ? <WarningOutlined /> : <CheckCircleOutlined />;
-        return <Tag icon={icon} color={color}>{status}</Tag>;
+        let isResist = status.includes('Resistance');
+        return <Tag icon={isResist ? <WarningOutlined /> : <CheckCircleOutlined />} style={{ background: 'transparent', border: `1px solid ${isResist ? '#f85149' : '#2ea043'}`, color: isResist ? '#f85149' : '#2ea043' }}>{status}</Tag>;
       }
     },
   ];
 
+  // 🪟 Premium Glass Card Style
+  const glassCardStyle = {
+    background: 'rgba(22, 27, 34, 0.4)',
+    backdropFilter: 'blur(12px)',
+    border: '1px solid #30363d',
+    borderRadius: '12px'
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', paddingBottom: '24px' }}>
+      
+      {/* 🚀 Header Section */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <Title level={3} style={{ margin: 0, fontWeight: 600 }}>Analytics & Metrics</Title>
-          <Text type="secondary">Database distribution statistics and high-priority variant tracking.</Text>
+          <Title level={2} style={{ margin: 0, fontWeight: 700, letterSpacing: '-0.5px' }}>Analytics & Metrics</Title>
+          <Text style={{ color: '#8b949e', fontSize: '15px' }}>Database distribution statistics and high-priority variant tracking.</Text>
         </div>
         
-        {/* 🎛️ Interactive Filter Controls */}
+        {/* 🎛️ Interactive Controls */}
         <Space>
           <Radio.Group value={timeRange} onChange={(e) => setTimeRange(e.target.value)} buttonStyle="solid">
             <Radio.Button value="7days">7 Days</Radio.Button>
             <Radio.Button value="30days">30 Days</Radio.Button>
             <Radio.Button value="all">All Time</Radio.Button>
           </Radio.Group>
-          <Button type="primary" icon={<DownloadOutlined />} onClick={handleExportCSV} style={{ background: '#00B5AD' }}>
+          <Button type="primary" icon={<DownloadOutlined />} onClick={handleExportCSV} style={{ background: '#5e6ad2', borderColor: '#5e6ad2' }}>
             Export CSV
           </Button>
         </Space>
       </div>
 
-      {loading ? <Spin size="large" style={{ display: 'block', margin: '100px auto' }} /> : (
-        <div className="fade-in">
-          <Row gutter={[16, 16]}>
-            <Col xs={24} md={12}>
-              <Card title={<Space><PieChartOutlined /> Variant Classification Breakdown</Space>} bordered={false} style={{ background: '#141414', borderColor: '#333', height: '100%' }}>
+      <div className="fade-in">
+        <Row gutter={[24, 24]}>
+          <Col xs={24} md={12}>
+            <Card title={<Text style={{ color: '#fff', fontSize: '16px' }}><PieChartOutlined style={{ marginRight: '8px' }}/>Variant Classification</Text>} bordered={false} style={{ ...glassCardStyle, height: '100%' }}>
+              <Skeleton loading={loading} active paragraph={{ rows: 5 }}>
                 <Space direction="vertical" style={{ width: '100%' }} size="middle">
                   {analyticsData.classifications.map((item, index) => (
                     <div key={index}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                        <Text style={{ color: '#e0e0e0' }}>{item.name}</Text>
+                        <Text style={{ color: '#c9d1d9' }}>{item.name}</Text>
                         <Text strong style={{ color: '#fff' }}>{item.percent}%</Text>
                       </div>
-                      <Progress percent={item.percent} strokeColor={item.color} showInfo={false} />
+                      <Progress percent={item.percent} strokeColor={item.color} trailColor="rgba(255,255,255,0.05)" showInfo={false} />
                     </div>
                   ))}
                 </Space>
-              </Card>
-            </Col>
-            
-            <Col xs={24} md={12}>
-              <Card title={<Space><BarChartOutlined /> Indexed Therapeutic Trials</Space>} bordered={false} style={{ background: '#141414', borderColor: '#333', height: '100%' }}>
+              </Skeleton>
+            </Card>
+          </Col>
+          
+          <Col xs={24} md={12}>
+            <Card title={<Text style={{ color: '#fff', fontSize: '16px' }}><BarChartOutlined style={{ marginRight: '8px' }}/>Indexed Therapeutic Trials</Text>} bordered={false} style={{ ...glassCardStyle, height: '100%' }}>
+              <Skeleton loading={loading} active paragraph={{ rows: 5 }}>
                 <Space direction="vertical" style={{ width: '100%' }} size="middle">
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <Text style={{ color: '#e0e0e0' }}>FDA Approved (Standard of Care)</Text>
+                      <Text style={{ color: '#c9d1d9', fontWeight: 500 }}>FDA Approved (Standard of Care)</Text>
                       <Text strong style={{ color: '#fff' }}>320</Text>
                     </div>
-                    <Progress percent={100} success={{ percent: 25 }} strokeColor="#333" format={() => ''} />
+                    <Progress percent={100} success={{ percent: 25, strokeColor: '#2ea043' }} strokeColor="#30363d" trailColor="rgba(255,255,255,0.05)" format={() => ''} />
                   </div>
-                  <Divider style={{ margin: '8px 0', borderColor: '#333' }} />
+                  <Divider style={{ margin: '8px 0', borderColor: '#30363d' }} />
                   {analyticsData.trials.map((trial, index) => (
                     <div key={index}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                        <Text style={{ color: '#e0e0e0' }}>{trial.phase}</Text>
-                        <Text type="secondary">{trial.count} trials</Text>
+                        <Text style={{ color: '#c9d1d9' }}>{trial.phase}</Text>
+                        <Text style={{ color: '#8b949e' }}>{trial.count} trials</Text>
                       </div>
-                      <Progress percent={trial.percent} strokeColor={trial.color} showInfo={false} />
+                      <Progress percent={trial.percent} strokeColor={trial.color} trailColor="rgba(255,255,255,0.05)" showInfo={false} />
                     </div>
                   ))}
                 </Space>
-              </Card>
-            </Col>
-          </Row>
+              </Skeleton>
+            </Card>
+          </Col>
+        </Row>
 
-          <Card title={<Space><FilterOutlined /> High-Priority Actionable Variants</Space>} bordered={false} style={{ background: '#141414', borderColor: '#333', marginTop: '16px' }}>
-            <Table columns={columns} dataSource={analyticsData.variants} pagination={false} size="middle" rowClassName={() => 'table-row-dark'} />
-          </Card>
-        </div>
-      )}
+        <Card title={<Text style={{ color: '#fff', fontSize: '16px' }}><FilterOutlined style={{ marginRight: '8px' }}/>High-Priority Actionable Variants</Text>} bordered={false} style={{ ...glassCardStyle, marginTop: '24px' }} bodyStyle={{ padding: 0 }}>
+          <Skeleton loading={loading} active paragraph={{ rows: 5 }} style={{ padding: '24px' }}>
+            <Table 
+              columns={columns} 
+              dataSource={analyticsData.variants} 
+              pagination={false} 
+              size="middle" 
+              rowClassName={() => 'table-row-transparent'} 
+              style={{ background: 'transparent' }}
+            />
+          </Skeleton>
+        </Card>
+      </div>
     </div>
   );
 };
