@@ -1,10 +1,8 @@
 import axios from 'axios';
 
 const api = axios.create({
-  // Ensure /api/v1 is appended here!
   baseURL: 'https://oncokg-enterprise-production.up.railway.app/api/v1', 
   withCredentials: true,
-  // ... rest of the code
 });
 
 let isRefreshing = false;
@@ -38,7 +36,6 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     if (error.response?.status === 401 && !originalRequest._retry) {
-      // Prevent infinite loops if the refresh endpoint itself fails
       if (originalRequest.url.includes('/auth/refresh')) {
         localStorage.removeItem('oncokg_access_token');
         localStorage.removeItem('oncokg_user');
@@ -61,7 +58,6 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // Silent request to backend; relies on HttpOnly cookie
         const { data } = await api.post('/auth/refresh');
         
         localStorage.setItem('oncokg_access_token', data.access_token);
