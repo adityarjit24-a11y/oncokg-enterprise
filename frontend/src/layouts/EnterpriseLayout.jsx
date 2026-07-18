@@ -1,6 +1,5 @@
 // src/layouts/EnterpriseLayout.jsx
 import React, { useState, useEffect } from 'react';
-// ✅ FIX 1: Added Typography to this import list
 import { Layout, Menu, Input, Modal, Button, Avatar, Dropdown, Space, Badge, Tooltip, Typography } from 'antd';
 import { 
   SearchOutlined, 
@@ -14,14 +13,15 @@ import {
   ExperimentOutlined,
   UserOutlined
 } from '@ant-design/icons';
-import { useNavigate, useLocation } from 'react-router-dom';
+// ✅ FIX: Added Outlet here from react-router-dom
+import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import '../styles/glassmorphism.css'; 
 
 const { Header, Sider, Content } = Layout;
-// ✅ FIX 2: Added this exact line to prevent the 'Text' DOM error
 const { Text } = Typography;
 
-const EnterpriseLayout = ({ children }) => {
+// ✅ FIX: Removed { children } from here since we are using Outlet for nested routes
+const EnterpriseLayout = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
   const navigate = useNavigate();
@@ -129,7 +129,8 @@ const EnterpriseLayout = ({ children }) => {
         {/* 📄 Content Area with Smooth Transitions */}
         <Content style={{ padding: '24px', position: 'relative', overflowY: 'auto' }}>
           <div className="fade-in-up">
-            {children}
+            {/* ✅ FIX: Replaced {children} with <Outlet /> to render nested routes */}
+            <Outlet />
           </div>
         </Content>
       </Layout>
