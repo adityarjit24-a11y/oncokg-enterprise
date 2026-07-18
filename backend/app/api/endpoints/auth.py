@@ -30,20 +30,25 @@ def login(
     access_token = create_access_token(data={"sub": user.email, "role": user.role})
     refresh_token = create_refresh_token(data={"sub": user.email}, expires_delta=refresh_exp)
 
-    # SECURE COOKIE ATTACHMENT
+    # SECURE COOKIE ATTACHMENT (Fixed for Cross-Origin Vercel -> Railway)
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=True, # Requires HTTPS in production
-        samesite="lax",
+        secure=True,         # Requires HTTPS in production
+        samesite="none",     # YAHAN CHANGE KIYA HAI: 'lax' se 'none' kar diya
         max_age=int(refresh_exp.total_seconds())
     )
 
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "user": {"id": user.id, "email": user.email, "role": user.role}
+        "user": {
+            "id": user.id, 
+            "email": user.email, 
+            "role": user.role,
+            "name": "Dr. Researcher" # FIX: Default name add kar diya undefined hatane ke liye
+        }
     }
 
 @router.post("/refresh")
@@ -67,5 +72,6 @@ def refresh_session(
 
 @router.post("/logout")
 def logout(response: Response):
-    response.delete_cookie(key="refresh_token", httponly=True, secure=True, samesite="lax")
+    # FIX: Logout mein bhi samesite="none" hona zaroori hai
+    response.delete_cookie(key="refresh_token", httponly=True, secure=True, samesite="none")
     return {"message": "Session securely terminated"}
