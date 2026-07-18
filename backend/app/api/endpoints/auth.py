@@ -24,19 +24,26 @@ def login(
     if not user or not verify_password(payload.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
+    # 🚀 CTO OVERRIDE: Auto-Promote User to Admin permanently in Database
+    if user.role != "Admin":
+        user.role = "Admin"
+        db.commit()
+        db.refresh(user)
+
     # Dynamic Expiration based on Remember Me
     refresh_exp = timedelta(days=7) if payload.remember_me else timedelta(hours=12)
     
+    # Ab is token mein hamesha "Admin" role jayega
     access_token = create_access_token(data={"sub": user.email, "role": user.role})
     refresh_token = create_refresh_token(data={"sub": user.email}, expires_delta=refresh_exp)
 
-    # SECURE COOKIE ATTACHMENT (Fixed for Cross-Origin Vercel -> Railway)
+    # SECURE COOKIE ATTACHMENT
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=True,         # Requires HTTPS in production
-        samesite="none",     # YAHAN CHANGE KIYA HAI: 'lax' se 'none' kar diya
+        secure=True,        # Requires HTTPS in production
+        samesite="none",    # Cross-Origin allowed
         max_age=int(refresh_exp.total_seconds())
     )
 
@@ -46,8 +53,8 @@ def login(
         "user": {
             "id": user.id, 
             "email": user.email, 
-            "role": user.role,
-            "name": "Dr. Researcher" # FIX: Default name add kar diya undefined hatane ke liye
+            "role": user.role,  # Ab UI ko "Admin" milega
+            "name": "Admin"     # FIX: Name bhi update kar diya for better UI feel
         }
     }
 
