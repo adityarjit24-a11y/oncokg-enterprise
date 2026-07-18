@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, Response, Cookie
 from sqlalchemy.orm import Session
 from datetime import timedelta
 
-from db.database import get_db
-from models.user import User
-from schemas.auth import LoginRequest
-from core.security import (
+from app.db.database import get_db
+from app.models.user import User
+from app.schemas.auth import LoginRequest
+from app.core.security import (
     verify_password, 
     create_access_token, 
     create_refresh_token, 
