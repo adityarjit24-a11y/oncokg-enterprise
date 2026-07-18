@@ -4,12 +4,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from neo4j import GraphDatabase
 
-# Auth router import (Ensure karna ki path tumhare folder jaisa hi ho)
-# Agar pichli baar 'api.endpoints import auth' chal raha tha toh wahi rakhna
+# 1. DATABASE IMPORTS (Yahan add kiya hai)
+from app.db.database import engine, Base
+from app.models.user import User
+
+# Auth router import
 from app.api.endpoints import auth
 
-# Sirf ek baar app initialize hoga
 app = FastAPI(title="OncoKG Enterprise API")
+
+# 2. AUTO-CREATE TABLES (Yeh line tumhare CORS error ko jad se khatam karegi)
+Base.metadata.create_all(bind=engine)
 
 # STRICT CORS POLICY (Production-ready lockdown)
 origins = [
@@ -21,12 +26,12 @@ origins = [
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=True, # Ye True hona chahiye cookies/tokens ke liye
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"], # Sirf allowed methods
+    allow_credentials=True, 
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"], 
     allow_headers=["*"], 
 )
 
-# 1. Auth Router Include (Ye sabse important hai /login chalane ke liye)
+# Auth Router Include
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 
 
@@ -38,7 +43,7 @@ PASSWORD = os.getenv("NEO4J_PASSWORD")
 if not URI:
     print("WARNING: NEO4J_URI not found in environment variables!")
 
-# 2. Graph Data Endpoint
+# Graph Data Endpoint
 @app.get("/api/v1/graph", tags=["graph"])
 def get_graph_data():
     try:
@@ -58,7 +63,7 @@ def get_graph_data():
     except Exception as e:
         return {"error": str(e)}
 
-# 3. Dynamic Explorer 
+# Dynamic Explorer 
 @app.get("/api/v1/explore/{entity_type}", tags=["explorer"])
 def get_explorer_data(entity_type: str, limit: int = 50, search: str = ""):
     mapping = {
@@ -91,18 +96,17 @@ def get_explorer_data(entity_type: str, limit: int = 50, search: str = ""):
     except Exception as e:
         return []
 
-# 4. Simulation Lab
+# Simulation Lab
 @app.post("/api/v1/simulation/run", tags=["simulation"])
 async def run_simulation(request: Request):
     return {"status": "success", "efficacy_score": 88.5, "message": "Simulation executed"}
 
-# 5. AI Chat
+# AI Chat
 @app.post("/api/v1/ai/chat", tags=["ai"])
 async def ai_chat(request: Request):
     return {"reply": "System operational!"}
 
-# 6. Legacy Graph Redirect
+# Legacy Graph Redirect
 @app.get("/graph")
 async def legacy_graph_redirect():
-    # Frontend agar /graph maange, toh use seedha /api/v1/graph par bhej do
     return RedirectResponse(url="/api/v1/graph")
