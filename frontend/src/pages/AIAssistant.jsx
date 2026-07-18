@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, Input, Button, List, Typography, Space, Tag, Avatar, Spin } from 'antd';
-// ✅ FIX: Changed SparklesOutlined to MagicOutlined
-import { SendOutlined, RobotOutlined, UserOutlined, MagicOutlined } from '@ant-design/icons';
+// ✅ FIX: Removed missing icons, using only the guaranteed ones
+import { SendOutlined, RobotOutlined, UserOutlined } from '@ant-design/icons';
 import api from '../api/axios'; 
 
 const { Title, Text } = Typography;
@@ -60,8 +60,8 @@ const AIAssistant = () => {
       {/* 🚀 Header */}
       <div>
         <Title level={2} style={{ margin: 0, fontWeight: 700, letterSpacing: '-0.5px' }}>
-          {/* ✅ FIX: Using MagicOutlined here */}
-          <MagicOutlined style={{ color: '#5e6ad2', marginRight: '10px' }} />
+          {/* ✅ FIX: Using RobotOutlined for the title icon */}
+          <RobotOutlined style={{ color: '#5e6ad2', marginRight: '10px' }} />
           OncoAI Assistant
         </Title>
         <Text style={{ color: '#8b949e', fontSize: '15px' }}>Natural language interface for deep graph queries.</Text>
