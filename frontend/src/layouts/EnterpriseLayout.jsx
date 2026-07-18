@@ -1,6 +1,7 @@
 // src/layouts/EnterpriseLayout.jsx
 import React, { useState, useEffect } from 'react';
-import { Layout, Menu, Input, Modal, Button, Avatar, Dropdown, Space, Badge, Tooltip } from 'antd';
+// ✅ FIX 1: Added Typography to this import list
+import { Layout, Menu, Input, Modal, Button, Avatar, Dropdown, Space, Badge, Tooltip, Typography } from 'antd';
 import { 
   SearchOutlined, 
   AppstoreOutlined, 
@@ -14,9 +15,11 @@ import {
   UserOutlined
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
-import '../styles/glassmorphism.css'; // Assume we create this for backdrop-filters
+import '../styles/glassmorphism.css'; 
 
 const { Header, Sider, Content } = Layout;
+// ✅ FIX 2: Added this exact line to prevent the 'Text' DOM error
+const { Text } = Typography;
 
 const EnterpriseLayout = ({ children }) => {
   const [collapsed, setCollapsed] = useState(false);
@@ -147,7 +150,7 @@ const EnterpriseLayout = ({ children }) => {
             boxShadow: '0 8px 24px rgba(94, 106, 210, 0.4)',
             zIndex: 1000
           }}
-          onClick={() => console.log('Toggle AI Panel')}
+          onClick={() => navigate('/ai-assistant')}
         />
       </Tooltip>
 
@@ -171,7 +174,6 @@ const EnterpriseLayout = ({ children }) => {
         />
         <div style={{ padding: '16px', color: '#8b949e', minHeight: '200px' }}>
           <p style={{ fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Recent</p>
-          {/* Mock recent items for UI */}
           <div style={{ padding: '8px 12px', cursor: 'pointer', borderRadius: '6px', color: '#c9d1d9' }} className="cmd-item-hover">
             <ShareAltOutlined style={{ marginRight: '12px' }}/> View EGFR Knowledge Graph
           </div>
