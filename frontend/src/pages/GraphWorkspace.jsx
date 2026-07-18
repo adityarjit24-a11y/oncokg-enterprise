@@ -13,7 +13,6 @@ import api from '../api/axios';
 const { Title, Text } = Typography;
 const { Option } = Select;
 
-// Design System Constants
 const NODE_COLORS = {
   Drug: '#52c41a',      // Green
   Gene: '#1890ff',      // Blue
@@ -31,61 +30,50 @@ const EDGE_COLORS = {
   CONFERS_RESISTANCE_TO: '#722ed1',
   ASSOCIATED_WITH: '#f5222d',
   STUDIED_IN: '#722ed1',
-  DEFAULT: 'rgba(200, 200, 200, 0.4)'
+  DEFAULT: 'rgba(255, 255, 255, 0.3)' // ✅ Made default lines brighter
 };
 
-// SMART HELPER FUNCTIONS
+// ✅ FIX 1: Smarter Label Detection (Matches different DB formats)
 const getNodeType = (node) => {
-  const rawType = node.label || node.type || 'Unknown';
-  if (rawType === 'Chemical') return 'Drug';
-  if (rawType === 'Phenotype') return 'Disease';
-  if (rawType === 'Variant') return 'Mutation';
-  return rawType;
+  const rawType = String((node.labels && node.labels[0]) || node.label || node.type || 'Unknown').toLowerCase();
+  if (rawType.includes('chemical') || rawType.includes('drug')) return 'Drug';
+  if (rawType.includes('gene') || rawType.includes('protein')) return 'Gene';
+  if (rawType.includes('phenotype') || rawType.includes('disease')) return 'Disease';
+  if (rawType.includes('variant') || rawType.includes('mutation')) return 'Mutation';
+  if (rawType.includes('trial')) return 'Trial';
+  if (rawType.includes('publication') || rawType.includes('article')) return 'Publication';
+  return node.label || 'Unknown';
 };
 
-const getNodeName = (node) => {
-  return node.name || node.title || node.id || 'Unknown';
-};
-
-const getNodeColor = (node) => {
-  const type = getNodeType(node);
-  return NODE_COLORS[type] || NODE_COLORS.Unknown;
-};
+const getNodeName = (node) => node.name || node.title || node.id || 'Unknown';
+const getNodeColor = (node) => NODE_COLORS[getNodeType(node)] || NODE_COLORS.Unknown;
 
 const GraphWorkspace = () => {
   const containerRef = useRef();
   const graphRef = useRef();
   const [messageApi, contextHolder] = message.useMessage();
 
-  // Graph State
   const [graphData, setGraphData] = useState({ nodes: [], links: [] });
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null); 
   
-  // UI State
   const [selectedNode, setSelectedNode] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [physicsEnabled, setPhysicsEnabled] = useState(true);
   
-  // Filter State
   const [nodeTypeFilters, setNodeTypeFilters] = useState([]);
   const [edgeTypeFilters, setEdgeTypeFilters] = useState([]);
 
-  // Resize Observer for responsive canvas
   useEffect(() => {
     if (!containerRef.current) return;
     const observer = new ResizeObserver(entries => {
-      setDimensions({
-        width: entries[0].contentRect.width,
-        height: entries[0].contentRect.height
-      });
+      setDimensions({ width: entries[0].contentRect.width, height: entries[0].contentRect.height });
     });
     observer.observe(containerRef.current);
     return () => observer.disconnect();
   }, []);
 
-  // Fetch Data
   useEffect(() => {
     const controller = new AbortController();
 
@@ -98,12 +86,26 @@ const GraphWorkspace = () => {
         if (!res.data || !res.data.nodes || res.data.nodes.length === 0) {
           setGraphData({ nodes: [], links: [] }); 
         } else {
-          setGraphData(res.data);
+          // ✅ FIX 2: The Data Normalizer - Forces IDs to match exactly!
+          const normalizedNodes = res.data.nodes.map(n => ({
+            ...n,
+            id: n.elementId || n.id || n.name, // Fallbacks for different Neo4j versions
+            label: (n.labels && n.labels.length > 0) ? n.labels[0] : (n.label || n.type || 'Unknown')
+          }));
+
+          const validIds = new Set(normalizedNodes.map(n => n.id));
+
+          const normalizedLinks = (res.data.links || []).map(l => ({
+            ...l,
+            source: l.startNodeElementId || l.startNode || l.source?.id || l.source,
+            target: l.endNodeElementId || l.endNode || l.target?.id || l.target,
+            type: l.type || l.label || 'DEFAULT'
+          })).filter(l => validIds.has(l.source) && validIds.has(l.target)); // Ensures no ghost links
+
+          setGraphData({ nodes: normalizedNodes, links: normalizedLinks });
         }
       } catch (error) {
-        if (error.name === 'CanceledError' || error.code === 'ERR_CANCELED') {
-          console.log('Previous graph request cancelled');
-        } else {
+        if (error.name !== 'CanceledError' && error.code !== 'ERR_CANCELED') {
           console.error("Neo4j fetch failed:", error);
           setFetchError(error.response?.data?.message || "Failed to fetch knowledge graph data from Neo4j.");
           setGraphData({ nodes: [], links: [] });
@@ -117,7 +119,6 @@ const GraphWorkspace = () => {
     return () => controller.abort();
   }, []);
 
-  // Filter Logic (Memoized & Crash-Proofed)
   const filteredData = useMemo(() => {
     let { nodes, links } = graphData;
 
@@ -131,7 +132,6 @@ const GraphWorkspace = () => {
     
     const validNodeIds = new Set(nodes.map(n => n.id));
     
-    // ✅ FIX 2: Sanitize Links to prevent D3 Crash
     const safeLinks = links.map(l => ({
       ...l,
       source: typeof l.source === 'object' ? l.source.id : l.source,
@@ -144,7 +144,6 @@ const GraphWorkspace = () => {
     return { nodes, links: safeLinks };
   }, [graphData, nodeTypeFilters, edgeTypeFilters, searchQuery]);
 
-  // Canvas Drawing Methods
   const paintNode = useCallback((node, ctx, globalScale) => {
     const label = getNodeName(node);
     const fontSize = 12 / globalScale;
@@ -167,21 +166,16 @@ const GraphWorkspace = () => {
     ctx.fillText(label, node.x, node.y + radius + (4 / globalScale));
   }, [selectedNode]);
 
-  // Graph Interactions
   const handleNodeClick = useCallback((node) => {
     setSelectedNode(node);
     graphRef.current?.centerAt(node.x, node.y, 1000);
     graphRef.current?.zoom(4, 1000);
   }, []);
 
-  const focusGraph = useCallback(() => {
-    graphRef.current?.zoomToFit(800, 40);
-  }, []);
+  const focusGraph = useCallback(() => graphRef.current?.zoomToFit(800, 40), []);
 
-  // Exports
   const exportPNG = useCallback(() => {
     if (!containerRef.current) return;
-    // ✅ FIX 4: Correctly target the 2D Canvas for export
     const canvas = containerRef.current.querySelector('canvas');
     if (canvas) {
       const link = document.createElement('a');
@@ -207,7 +201,6 @@ const GraphWorkspace = () => {
     <div style={{ height: 'calc(100vh - 120px)', display: 'flex', flexDirection: 'column', gap: 16 }}>
       {contextHolder}
       
-      {/* Top Toolbar */}
       <Card bodyStyle={{ padding: '12px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Space size="large">
           <Input 
@@ -257,7 +250,6 @@ const GraphWorkspace = () => {
         </Space>
       </Card>
 
-      {/* Main Canvas Area */}
       <div style={{ flex: 1, position: 'relative', background: '#0a0a0a', borderRadius: 8, overflow: 'hidden' }} ref={containerRef}>
         
         {(!fetchError && !loading && graphData.nodes.length > 0) && (
@@ -296,21 +288,21 @@ const GraphWorkspace = () => {
             width={dimensions.width}
             height={dimensions.height}
             graphData={filteredData}
-            nodeId="id" // ✅ FIX 1: Explicitly defining nodeId so edges can connect
+            nodeId="id" 
             nodeLabel={getNodeName}
             nodeColor={getNodeColor}
             nodeCanvasObject={paintNode}
             linkColor={l => EDGE_COLORS[l.type] || EDGE_COLORS.DEFAULT}
             linkWidth={1.5}
-            linkDirectionalArrowLength={3.5}
-            linkDirectionalArrowRelPos={1}
+            // ✅ FIX 3: Animated moving particles to make lines 100% visible!
+            linkDirectionalParticles={2}
+            linkDirectionalParticleSpeed={0.005}
             onNodeClick={handleNodeClick}
-            cooldownTicks={physicsEnabled ? Infinity : 0} // ✅ FIX 3: Proper Physics Toggle
+            cooldownTicks={physicsEnabled ? Infinity : 0} 
             backgroundColor="#0a0a0a"
           />
         )}
 
-      {/* Node Details Drawer */}
         <Drawer
           title={
             <Space>
