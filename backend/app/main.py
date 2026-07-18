@@ -4,23 +4,43 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from neo4j import GraphDatabase
 
-# 1. DATABASE IMPORTS (Yahan add kiya hai)
-from app.db.database import engine, Base
+# 1. DATABASE IMPORTS (SessionLocal aur get_password_hash add kiya)
+from app.db.database import engine, Base, SessionLocal
 from app.models.user import User
+from app.core.security import get_password_hash
 
 # Auth router import
 from app.api.endpoints import auth
 
 app = FastAPI(title="OncoKG Enterprise API")
 
-# 2. AUTO-CREATE TABLES (Yeh line tumhare CORS error ko jad se khatam karegi)
+# 2. AUTO-CREATE TABLES
 Base.metadata.create_all(bind=engine)
+
+# 3. SEED DEFAULT USER (Yeh naya function automatically ek user bana dega)
+def seed_default_user():
+    db = SessionLocal()
+    # Check karega ki kya ye user pehle se hai
+    user = db.query(User).filter(User.email == "researcher@pharma-enterprise.com").first()
+    if not user:
+        # Agar nahi hai, toh naya bana dega with password 'admin123'
+        new_user = User(
+            email="researcher@pharma-enterprise.com",
+            hashed_password=get_password_hash("admin123"), 
+            role="Researcher"
+        )
+        db.add(new_user)
+        db.commit()
+    db.close()
+
+# Start hote hi user create function run hoga
+seed_default_user()
 
 # STRICT CORS POLICY (Production-ready lockdown)
 origins = [
-    "https://oncokg-enterprise.vercel.app", # YEH TUMHARA PRODUCTION FRONTEND HAI
-    "http://localhost:3000",                # Agar local dev React use karte ho
-    "http://localhost:5173"                 # Agar local dev Vite use karte ho
+    "https://oncokg-enterprise.vercel.app", 
+    "http://localhost:3000",                
+    "http://localhost:5173"                 
 ]
 
 app.add_middleware(
@@ -34,6 +54,8 @@ app.add_middleware(
 # Auth Router Include
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 
+# ------------- BAAKI NEECHE KA CODE SAME RAHEGA -------------
+# URI = os.getenv("NEO4J_URI") ... (and so on)
 
 # Neo4j Graph Database Credentials Load karo
 URI = os.getenv("NEO4J_URI")
