@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
-import { Card, Input, Button, List, Typography, Space, Tag, Avatar, Spin } from 'antd';
+import React, { useState, useRef, useEffect } from 'react';
+import { Card, Input, Button, List, Typography, Space, Tag, Avatar, Spin, message } from 'antd';
 import { SendOutlined, RobotOutlined, UserOutlined } from '@ant-design/icons';
-// ✅ FIX: Use our custom api instance instead of raw axios
 import api from '../api/axios'; 
 
 const { Title, Text } = Typography;
@@ -10,6 +9,17 @@ const AIAssistant = () => {
   const [messages, setMessages] = useState([{ sender: 'ai', text: 'Hello! I am the OncoKG Enterprise AI. How can I assist your research today?' }]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  // ✅ FIX: Auto-scroll to bottom reference
+  const messagesEndRef = useRef(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const suggestions = [
     "Which drugs target EGFR?",
@@ -25,15 +35,15 @@ const AIAssistant = () => {
     setLoading(true);
 
     try {
-      // ✅ Real API Call
+      // 🔄 Real API Call
       const res = await api.post('/ai/chat', { message: text });
       setMessages(prev => [...prev, { sender: 'ai', text: res.data.reply }]);
     } catch (error) {
       console.error("AI API Error:", error);
-      // ✅ ENTERPRISE FALLBACK: Agar backend 404 de, toh UI break na ho.
+      // 🛡️ ENTERPRISE FALLBACK
       setMessages(prev => [...prev, { 
         sender: 'ai', 
-        text: `System Alert: Backend AI endpoint (/api/v1/ai/chat) is returning 404. \n\nMock Response: You asked about "${text}". The Knowledge Graph is currently analyzing this.` 
+        text: `System Alert: Backend AI endpoint is unreachable.\n\nSimulated Response: The entity "${text}" has strong associations in the current graph context. I am analyzing the shortest path now...` 
       }]);
     } finally {
       setLoading(false);
@@ -50,7 +60,6 @@ const AIAssistant = () => {
         ))}
       </Space>
 
-      {/* ✅ FIX: Adjusted background for Dark Mode compatibility */}
       <Card style={{ flex: 1, overflowY: 'auto', marginBottom: 16, background: '#141414', borderColor: '#333' }} bodyStyle={{ padding: '16px' }}>
         <List
           dataSource={messages}
@@ -58,7 +67,6 @@ const AIAssistant = () => {
             <List.Item style={{ borderBottom: 'none', justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start' }}>
               <Space align="start">
                 {msg.sender === 'ai' && <Avatar style={{ backgroundColor: '#00B5AD' }} icon={<RobotOutlined />} />}
-                {/* ✅ FIX: Colors adjusted so text is visible in both user and AI bubbles */}
                 <div style={{ 
                   background: msg.sender === 'user' ? '#00B5AD' : '#1d1d1d', 
                   color: '#fff', 
@@ -75,17 +83,24 @@ const AIAssistant = () => {
           )}
         />
         {loading && <div style={{ textAlign: 'center', marginTop: 16 }}><Spin /></div>}
+        {/* ✅ Invisible div to anchor the auto-scroll */}
+        <div ref={messagesEndRef} />
       </Card>
 
       <Space.Compact style={{ width: '100%' }}>
         <Input.TextArea 
           value={input} 
           onChange={e => setInput(e.target.value)} 
-          placeholder="Ask the knowledge graph..." 
+          placeholder="Ask the knowledge graph... (Shift + Enter for new line)" 
           autoSize={{ minRows: 2, maxRows: 4 }} 
-          onPressEnter={(e) => { if(!e.shiftKey) { e.preventDefault(); handleSend(input); }}} 
+          onPressEnter={(e) => { 
+            if(!e.shiftKey) { 
+              e.preventDefault(); 
+              handleSend(input); 
+            }
+          }} 
         />
-        <Button type="primary" style={{ height: 'auto' }} icon={<SendOutlined />} onClick={() => handleSend(input)} loading={loading}>
+        <Button type="primary" style={{ height: 'auto', background: '#00B5AD' }} icon={<SendOutlined />} onClick={() => handleSend(input)} loading={loading}>
           Send
         </Button>
       </Space.Compact>
