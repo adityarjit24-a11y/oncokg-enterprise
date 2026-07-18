@@ -60,12 +60,20 @@ def refresh_session(
     if not refresh_token:
         raise HTTPException(status_code=401, detail="Refresh token missing")
     
-    # Validate refresh token and extract user logic here
-    user_email = verify_and_decode_token(refresh_token) 
-    if not user_email:
+    # 1. Token decode kiya
+    token_data = verify_and_decode_token(refresh_token) 
+    if not token_data:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
+    # 2. YAHAN HAI ASLI FIX: Dictionary mein se sirf email string nikali
+    # Agar token_data dictionary hai toh usme se "sub" nikal lo
+    user_email = token_data.get("sub") if isinstance(token_data, dict) else token_data
+
+    # 3. Ab SQL query ko sirf string milegi, dict nahi!
     user = db.query(User).filter(User.email == user_email).first()
+    
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found in database")
     
     new_access_token = create_access_token(data={"sub": user.email, "role": user.role})
     return {"access_token": new_access_token}
