@@ -10,13 +10,16 @@ export default defineConfig({
     },
   },
   build: {
-    chunkSizeWarningLimit: 1000, // Limit badha di
+    chunkSizeWarningLimit: 1500, // Limit ko thoda aur badha diya safety ke liye
     rollupOptions: {
       output: {
-        // Code splitting: bade files ko chhota kar do
+        // Safe Code Splitting: React ko touch nahi karenge, baaki heavy libraries ko split karenge
         manualChunks(id) {
-          if (id.includes('node_modules')) {
-            return 'vendor';
+          if (id.includes('node_modules/recharts') || id.includes('node_modules/d3')) {
+            return 'charts-vendor';
+          }
+          if (id.includes('node_modules/lucide-react')) {
+            return 'icons-vendor';
           }
         }
       }
