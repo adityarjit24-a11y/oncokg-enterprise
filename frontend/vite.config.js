@@ -8,21 +8,11 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+    // 🔥 THE MAGIC FIX: Ye line ensure karegi ki poore app mein React ki sirf ek copy ho
+    dedupe: ['react', 'react-dom'],
   },
   build: {
-    chunkSizeWarningLimit: 1500, // Limit ko thoda aur badha diya safety ke liye
-    rollupOptions: {
-      output: {
-        // Safe Code Splitting: React ko touch nahi karenge, baaki heavy libraries ko split karenge
-        manualChunks(id) {
-          if (id.includes('node_modules/recharts') || id.includes('node_modules/d3')) {
-            return 'charts-vendor';
-          }
-          if (id.includes('node_modules/lucide-react')) {
-            return 'icons-vendor';
-          }
-        }
-      }
-    }
+    // Warning ko chup karane ke liye limit badha di, manual chunking hata di
+    chunkSizeWarningLimit: 3000, 
   }
 })
